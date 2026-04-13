@@ -4,10 +4,40 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Controle Geral - Prefeitura Gov. Edison Lobão</title>
-    <link rel="manifest" href="/manifest.json">
+    <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#006000">
+    <style>
+        body { margin: 0; background: #006000; font-family: sans-serif; }
+        #initial-loader {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            height: 100vh; color: #EFD103; text-align: center;
+        }
+        .spinner {
+            width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.1);
+            border-left-color: #EFD103; border-radius: 50%; animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        #error-screen { display: none; padding: 20px; color: #fff; text-align: center; }
+        #error-screen b { color: #fca5a5; }
+        .retry-btn {
+            margin-top: 15px; padding: 10px 20px; background: #EFD103; color: #000;
+            border: none; border-radius: 8px; font-weight: bold; cursor: pointer;
+        }
+    </style>
 </head>
 <body>
+    <div id="initial-loader">
+        <div class="spinner"></div>
+        <div>Carregando sistema...</div>
+    </div>
+
+    <div id="error-screen">
+        <h3>⚠️ Erro ao carregar o sistema</h3>
+        <p id="error-msg"></p>
+        <button class="retry-btn" onclick="location.reload()">Tentar novamente</button>
+    </div>
+
     <div id="root"></div>
 
     <!-- Bibliotecas Externas (CDNs) -->
@@ -17,32 +47,59 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
 
-    <!-- Scripts Locais -->
-    <script src="/brasao.js"></script>
-    <script src="/app.js"></script>
+    <!-- Scripts Locais (Usando caminhos relativos para maior compatibilidade) -->
+    <script src="brasao.js"></script>
+    <script src="app.js"></script>
 
     <script>
+        window.addEventListener('error', function(e) {
+            console.error('Runtime error:', e);
+            showError('Erro de execução: ' + e.message);
+        });
+
+        function showError(msg) {
+            const loader = document.getElementById('initial-loader');
+            const screen = document.getElementById('error-screen');
+            const msgEl = document.getElementById('error-msg');
+            if (loader) loader.style.display = 'none';
+            if (screen) screen.style.display = 'block';
+            if (msgEl) msgEl.textContent = msg;
+        }
+
         // Inicialização do React
-        if (window.App && window.ReactDOM) {
-            const rootElement = document.getElementById('root');
-            if (rootElement) {
-                const root = ReactDOM.createRoot(rootElement);
-                root.render(React.createElement(window.App));
+        try {
+            if (window.App && window.ReactDOM) {
+                const rootElement = document.getElementById('root');
+                if (rootElement) {
+                    const root = ReactDOM.createRoot(rootElement);
+                    root.render(React.createElement(window.App));
+                    // Remover loader após render
+                    setTimeout(() => {
+                        const loader = document.getElementById('initial-loader');
+                        if (loader) loader.style.display = 'none';
+                    }, 500);
+                } else {
+                    showError('Elemento #root não encontrado.');
+                }
             } else {
-                console.error('Erro: Elemento #root não encontrado.');
+                // Verificar qual global está faltando
+                let missing = [];
+                if (!window.React) missing.push('React');
+                if (!window.ReactDOM) missing.push('ReactDOM');
+                if (!window.App) missing.push('App.js');
+                showError('Falha ao carregar dependências: ' + missing.join(', '));
             }
-        } else {
-            console.error('Erro: window.App ou ReactDOM não definidos.');
-            document.body.innerHTML = '<div style="color: white; background: red; padding: 20px; text-align: center;">Erro crítico: Falha ao carregar o sistema. Verifique a conexão.</div>';
+        } catch (err) {
+            showError(err.message);
         }
 
         // Registro do Service Worker
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js').then(registration => {
-                    console.log('SW registrado com sucesso:', registration.scope);
-                }, err => {
-                    console.log('Falha ao registrar SW:', err);
+                navigator.serviceWorker.register('sw.js').then(registration => {
+                    console.log('SW registrado:', registration.scope);
+                }).catch(err => {
+                    console.warn('Falha SW:', err);
                 });
             });
         }

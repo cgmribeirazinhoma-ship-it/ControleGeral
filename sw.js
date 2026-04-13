@@ -21,10 +21,11 @@ self.addEventListener('install', function(e) {
       CDN_URLS.forEach(function(url) {
         cache.add(url).catch(function() {});
       });
-      // Cacheia o shell da aplicação
-      // [FIX] Alterado de /src/app.js para /app.js
-      return cache.addAll(['/', '/index.html', '/app.js', '/brasao.js', '/manifest.json'])
-        .catch(function() {});
+      // Cacheia o shell da aplicação (usando caminhos relativos)
+      return cache.addAll(['.', 'index.html', 'app.js', 'brasao.js', 'manifest.json'])
+        .catch(function(err) {
+          console.warn('Falha no cache inicial:', err);
+        });
     }).then(function() {
       return self.skipWaiting();
     })
@@ -89,7 +90,7 @@ self.addEventListener('fetch', function(e) {
       return resp;
     }).catch(function() {
       return caches.match(e.request).then(function(cached) {
-        return cached || caches.match('/index.html');
+        return cached || caches.match('index.html') || caches.match('.');
       });
     })
   );
