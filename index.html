@@ -4,13 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Controle Geral - Prefeitura Gov. Edison Lobão</title>
-    <link rel="manifest" href="manifest.json">
+    <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#006000">
     <style>
-        body { margin: 0; background: #006000; font-family: sans-serif; }
+        body { margin: 0; background: #006000; font-family: sans-serif; overflow: hidden; }
         #initial-loader {
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             height: 100vh; color: #EFD103; text-align: center;
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 9999; background: #006000;
         }
         .spinner {
             width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.1);
@@ -18,18 +19,20 @@
             margin-bottom: 15px;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
-        #error-screen { display: none; padding: 20px; color: #fff; text-align: center; }
+        #error-screen { display: none; padding: 20px; color: #fff; text-align: center; position: fixed; inset: 0; background: #450a0a; z-index: 10000; overflow-y: auto; }
         #error-screen b { color: #fca5a5; }
         .retry-btn {
             margin-top: 15px; padding: 10px 20px; background: #EFD103; color: #000;
             border: none; border-radius: 8px; font-weight: bold; cursor: pointer;
         }
+        #log { font-family: monospace; font-size: 10px; color: #94a3b8; margin-top: 10px; max-width: 80%; }
     </style>
 </head>
 <body>
     <div id="initial-loader">
         <div class="spinner"></div>
         <div>Carregando sistema...</div>
+        <div id="log">Iniciando...</div>
     </div>
 
     <div id="error-screen">
@@ -40,23 +43,16 @@
 
     <div id="root"></div>
 
-    <!-- Bibliotecas Externas (CDNs) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
-
-    <!-- Scripts Locais (Usando caminhos relativos para maior compatibilidade) -->
-    <script src="brasao.js"></script>
-    <script src="app.js"></script>
-
     <script>
+        function addLog(msg) {
+            console.log(msg);
+            const el = document.getElementById('log');
+            if (el) el.textContent += '\n' + msg;
+        }
         window.addEventListener('error', function(e) {
             console.error('Runtime error:', e);
-            showError('Erro de execução: ' + e.message);
+            showError('Erro de execução: ' + (e.message || 'Erro desconhecido'));
         });
-
         function showError(msg) {
             const loader = document.getElementById('initial-loader');
             const screen = document.getElementById('error-screen');
@@ -65,42 +61,50 @@
             if (screen) screen.style.display = 'block';
             if (msgEl) msgEl.textContent = msg;
         }
+    </script>
 
-        // Inicialização do React
+    <!-- Bibliotecas Externas (CDNs) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" onload="addLog('React OK')" onerror="showError('Falha: React CDN')"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" onload="addLog('ReactDOM OK')" onerror="showError('Falha: ReactDOM CDN')"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" onload="addLog('XLSX OK')" onerror="addLog('Aviso: XLSX CDN falhou')"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" onload="addLog('jsPDF OK')"></script>
+    <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js" onload="addLog('docx OK')"></script>
+
+    <!-- Scripts Locais (Usando caminhos absolutos para SPA) -->
+    <script src="/brasao.js" onload="addLog('Brasao OK')" onerror="showError('Falha: brasao.js local')"></script>
+    <script src="/app.js" onload="addLog('App Script OK')" onerror="showError('Falha: app.js local')"></script>
+
+    <script>
+        addLog('Iniciando montagem...');
         try {
             if (window.App && window.ReactDOM) {
                 const rootElement = document.getElementById('root');
                 if (rootElement) {
                     const root = ReactDOM.createRoot(rootElement);
                     root.render(React.createElement(window.App));
-                    // Remover loader após render
+                    addLog('Render ok');
                     setTimeout(() => {
                         const loader = document.getElementById('initial-loader');
                         if (loader) loader.style.display = 'none';
+                        document.body.style.overflow = 'auto';
                     }, 500);
                 } else {
                     showError('Elemento #root não encontrado.');
                 }
             } else {
-                // Verificar qual global está faltando
                 let missing = [];
                 if (!window.React) missing.push('React');
                 if (!window.ReactDOM) missing.push('ReactDOM');
-                if (!window.App) missing.push('App.js');
-                showError('Falha ao carregar dependências: ' + missing.join(', '));
+                if (!window.App) missing.push('App.js (não carregado ou com erro)');
+                showError('Falha ao carregar componentes: ' + missing.join(', '));
             }
         } catch (err) {
-            showError(err.message);
+            showError('Erro na inicialização: ' + err.message);
         }
 
-        // Registro do Service Worker
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js').then(registration => {
-                    console.log('SW registrado:', registration.scope);
-                }).catch(err => {
-                    console.warn('Falha SW:', err);
-                });
+                navigator.serviceWorker.register('/sw.js').then(r => addLog('SW OK')).catch(e => console.warn('SW Fail:', e));
             });
         }
     </script>

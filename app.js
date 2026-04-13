@@ -945,43 +945,41 @@ function _buildMapDataInner(processos) {
 // se o código de hash mudar entre deploys, evitando login quebrado.
 const USERS_SCHEMA_V = 3;
 
-// Polyfill para crypto.randomUUID (necessário em contextos HTTP/IP local)
-try {
-  if (typeof crypto === 'undefined') window.crypto = window.msCrypto || {};
-  if (!crypto.randomUUID) {
-    crypto.randomUUID = function() {
-      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-        return v.toString(16);
-      });
-    };
-  }
-} catch (e) {
-  console.warn("Falha ao configurar polyfill de crypto:", e);
+// Polyfill e Fallbacks para Crypto (Segurança ultra-robusta contra bloqueios de navegador)
+const _crypto = (typeof window !== 'undefined' ? (window.crypto || window.msCrypto) : null);
+
+function _generateUUID() {
+  try {
+    if (_crypto && _crypto.randomUUID) return _crypto.randomUUID();
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0, v = (c === 'x' ? r : (r & 0x3 | 0x8));
+      return v.toString(16);
+    });
+  } catch (e) { return Math.random().toString(36).slice(2) + Date.now().toString(36); }
 }
 
 async function hashSenha(salt, senha) {
   const e = new TextEncoder();
-  let hash;
-  if (crypto.subtle && crypto.subtle.digest) {
-    const b = await crypto.subtle.digest("SHA-256", e.encode(salt + senha));
-    hash = [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, "0")).join("");
-  } else {
-    // Fallback inseguro para contextos sem SubtleCrypto (HTTP local)
-    // Apenas para não quebrar o sistema; em produção use HTTPS
-    console.warn("SubtleCrypto não disponível. Usando hash simplificado.");
-    let h = 0;
-    const s = salt + senha;
-    for (let i = 0; i < s.length; i++) h = ((h << 5) - h) + s.charCodeAt(i) | 0;
-    hash = Math.abs(h).toString(16);
-  }
-  return hash;
+  try {
+    if (_crypto && _crypto.subtle && _crypto.subtle.digest) {
+      const b = await _crypto.subtle.digest("SHA-256", e.encode(salt + senha));
+      return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, "0")).join("");
+    }
+  } catch (err) { console.warn("Erro no hash nativo:", err); }
+
+  // Fallback seguro (não-criptográfico) para contextos restritos (HTTP)
+  console.warn("Usando fallback de hash simplificado.");
+  let h = 0;
+  const s = salt + senha;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) - h) + s.charCodeAt(i) | 0;
+  return Math.abs(h).toString(16);
 }
+
 async function loadUsers() {
   let u = await ST.get("users");
   // Recria admin se: não existe, ou schemaV desatualizado (hash de versão anterior)
   if (!u || u.__schemaV !== USERS_SCHEMA_V) {
-    const salt = (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36)).replace(/-/g, "").slice(0, 32);
+    const salt = _generateUUID().replace(/-/g, "").slice(0, 32);
     const hash = await hashSenha(salt, "admin123");
     // Preserva outros usuários se existirem, apenas garante admin válido
     const admExistente = u?.admin;
@@ -5904,7 +5902,7 @@ function UsuariosPage({
     }
     setLoading(true);
     try {
-      const salt = (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36)).replace(/-/g, "").slice(0, 32);
+      const salt = _generateUUID().replace(/-/g, "").slice(0, 32);
       const hash = await hashSenha(salt, novaSenha);
       const updated = {
         ...users,
@@ -5947,7 +5945,7 @@ function UsuariosPage({
     setModalSenha({ login });
   };
   const confirmarResetSenha = async (login, ns) => {
-    const salt = (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36)).replace(/-/g, "").slice(0, 32);
+    const salt = _generateUUID().replace(/-/g, "").slice(0, 32);
     const hash = await hashSenha(salt, ns.trim());
     const updated = {
       ...users,

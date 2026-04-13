@@ -1,10 +1,5 @@
-// ─── ControleGeral Service Worker v4.0 ───────────────────────────────────────
-// Estratégia:
-//   Supabase/BrasilAPI → sempre rede (dados não são cacheados)
-//   CDN (React, XLSX, jsPDF) → Cache First (baixa 1x, serve sempre offline)
-//   App shell (index.html, app.js) → Network First, fallback para cache
-
-const CACHE = 'cgel-v4.0';
+// ─── ControleGeral Service Worker v4.1 ───────────────────────────────────────
+const CACHE = 'cgel-v4.1';
 const CDN_URLS = [
   'https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js',
@@ -13,92 +8,44 @@ const CDN_URLS = [
   'https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js',
 ];
 
-// Instala e pré-cacheia CDN + shell
 self.addEventListener('install', function(e) {
   e.waitUntil(
     caches.open(CACHE).then(function(cache) {
-      // Cacheia CDN silenciosamente (falha não é crítica)
-      CDN_URLS.forEach(function(url) {
-        cache.add(url).catch(function() {});
-      });
-      // Cacheia o shell da aplicação (usando caminhos relativos)
-      return cache.addAll(['.', 'index.html', 'app.js', 'brasao.js', 'manifest.json'])
-        .catch(function(err) {
-          console.warn('Falha no cache inicial:', err);
-        });
-    }).then(function() {
-      return self.skipWaiting();
-    })
+      CDN_URLS.forEach(function(url) { cache.add(url).catch(function() {}); });
+      return cache.addAll(['/', '/index.html', '/app.js', '/brasao.js', '/manifest.json'])
+        .catch(function(err) { console.warn('PWA: Cache Fail:', err); });
+    }).then(function() { return self.skipWaiting(); })
   );
 });
 
-// Remove caches antigos
 self.addEventListener('activate', function(e) {
   e.waitUntil(
     caches.keys().then(function(keys) {
-      return Promise.all(
-        keys.filter(function(k) { return k !== CACHE; })
-            .map(function(k) { return caches.delete(k); })
-      );
-    }).then(function() {
-      return self.clients.claim();
-    })
+      return Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)));
+    }).then(function() { return self.clients.claim(); })
   );
 });
 
-// Intercepta todas as requisições
 self.addEventListener('fetch', function(e) {
   var url = e.request.url;
-
-  // 1. Supabase e BrasilAPI — sempre rede, nunca cacheia dados
   if (url.includes('supabase.co') || url.includes('brasilapi.com.br')) {
-    e.respondWith(
-      fetch(e.request).catch(function() {
-        return new Response(JSON.stringify([]), {
-          headers: { 'Content-Type': 'application/json' }
-        });
-      })
-    );
+    e.respondWith(fetch(e.request).catch(() => new Response(JSON.stringify([]), {headers:{'Content-Type':'application/json'}})));
     return;
   }
-
-  // 2. CDN — Cache First (offline-friendly)
-  if (url.includes('cdnjs.cloudflare.com') || url.includes('jsdelivr.net') || url.includes('unpkg.com')) {
-    e.respondWith(
-      caches.match(e.request).then(function(cached) {
-        if (cached) return cached;
-        return fetch(e.request).then(function(resp) {
-          if (resp.ok) {
-            var clone = resp.clone();
-            caches.open(CACHE).then(function(c) { c.put(e.request, clone); });
-          }
-          return resp;
-        });
-      })
-    );
-    return;
-  }
-
-  // 3. App shell — Network First, fallback para cache se offline
-  if (e.request.method !== 'GET') return;
-  e.respondWith(
-    fetch(e.request).then(function(resp) {
-      if (resp.ok) {
-        var clone = resp.clone();
-        caches.open(CACHE).then(function(c) { c.put(e.request, clone); });
-      }
+  if (url.includes('cdnjs.cloudflare.com') || url.includes('jsdelivr.net')) {
+    e.respondWith(caches.match(e.request).then(cached => cached || fetch(e.request).then(resp => {
+      if (resp.ok) { var clone = resp.clone(); caches.open(CACHE).then(c => c.put(e.request, clone)); }
       return resp;
-    }).catch(function() {
-      return caches.match(e.request).then(function(cached) {
-        return cached || caches.match('index.html') || caches.match('.');
-      });
-    })
-  );
+    })));
+    return;
+  }
+  if (e.request.method !== 'GET') return;
+  e.respondWith(fetch(e.request).then(resp => {
+    if (resp.ok) { var clone = resp.clone(); caches.open(CACHE).then(c => c.put(e.request, clone)); }
+    return resp;
+  }).catch(() => caches.match(e.request).then(cached => cached || caches.match('/index.html'))));
 });
 
-// Mensagem de controle
 self.addEventListener('message', function(e) {
-  if (e.data && e.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
+  if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
