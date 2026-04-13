@@ -10,7 +10,7 @@ const CDN_URLS = [
   'https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
-  'https://unpkg.com/docx@7.8.2/build/index.umd.js',
+  'https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js',
 ];
 
 // Instala e pré-cacheia CDN + shell
@@ -22,7 +22,8 @@ self.addEventListener('install', function(e) {
         cache.add(url).catch(function() {});
       });
       // Cacheia o shell da aplicação
-      return cache.addAll(['/', '/index.html', '/src/app.js', '/manifest.json'])
+      // [FIX] Alterado de /src/app.js para /app.js
+      return cache.addAll(['/', '/index.html', '/app.js', '/brasao.js', '/manifest.json'])
         .catch(function() {});
     }).then(function() {
       return self.skipWaiting();
@@ -61,7 +62,7 @@ self.addEventListener('fetch', function(e) {
   }
 
   // 2. CDN — Cache First (offline-friendly)
-  if (url.includes('cdnjs.cloudflare.com') || url.includes('unpkg.com')) {
+  if (url.includes('cdnjs.cloudflare.com') || url.includes('jsdelivr.net') || url.includes('unpkg.com')) {
     e.respondWith(
       caches.match(e.request).then(function(cached) {
         if (cached) return cached;

@@ -4,11 +4,17 @@
   "description": "Sistema de Controle de Processos de Pagamento — Prefeitura Gov. Edison Lobão / MA",
   "private": true,
   "scripts": {
-    "dev":     "vite",
-    "build":   "vite build",
-    "preview": "vite preview"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "jest"
   },
   "devDependencies": {
+    "jest": "^30.3.0",
+    "jest-environment-jsdom": "^30.3.0",
     "vite": "^5.2.0"
+  },
+  "jest": {
+    "testEnvironment": "jsdom"
   }
 }

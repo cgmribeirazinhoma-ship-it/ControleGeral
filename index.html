@@ -1,24 +1,50 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>App</title>
+    <title>Controle Geral - Prefeitura Gov. Edison Lobão</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#006000">
 </head>
 <body>
     <div id="root"></div>
+
+    <!-- Bibliotecas Externas (CDNs) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
+
+    <!-- Scripts Locais -->
+    <script src="/brasao.js"></script>
+    <script src="/app.js"></script>
+
     <script>
-        // Check for window.App before initializing React
-        if (window.App) {
+        // Inicialização do React
+        if (window.App && window.ReactDOM) {
             const rootElement = document.getElementById('root');
             if (rootElement) {
                 const root = ReactDOM.createRoot(rootElement);
-                root.render(<App />);
+                root.render(React.createElement(window.App));
             } else {
-                console.error('Error: Root element not found.');
+                console.error('Erro: Elemento #root não encontrado.');
             }
         } else {
-            console.error('Error: window.App is not defined.');
+            console.error('Erro: window.App ou ReactDOM não definidos.');
+            document.body.innerHTML = '<div style="color: white; background: red; padding: 20px; text-align: center;">Erro crítico: Falha ao carregar o sistema. Verifique a conexão.</div>';
+        }
+
+        // Registro do Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').then(registration => {
+                    console.log('SW registrado com sucesso:', registration.scope);
+                }, err => {
+                    console.log('Falha ao registrar SW:', err);
+                });
+            });
         }
     </script>
 </body>
