@@ -2,109 +2,133 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Controle Geral - Prefeitura Gov. Edison Lobão</title>
-    <link rel="manifest" href="/manifest.json">
+    <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#006000">
     <style>
-        body { margin: 0; background: #006000; font-family: sans-serif; overflow: hidden; }
+        body { margin: 0; background: #006000; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; overflow: hidden; }
         #initial-loader {
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             height: 100vh; color: #EFD103; text-align: center;
             position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 9999; background: #006000;
         }
         .spinner {
-            width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.1);
+            width: 50px; height: 50px; border: 5px solid rgba(239,209,3,0.1);
             border-left-color: #EFD103; border-radius: 50%; animation: spin 1s linear infinite;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
-        #error-screen { display: none; padding: 20px; color: #fff; text-align: center; position: fixed; inset: 0; background: #450a0a; z-index: 10000; overflow-y: auto; }
-        #error-screen b { color: #fca5a5; }
-        .retry-btn {
-            margin-top: 15px; padding: 10px 20px; background: #EFD103; color: #000;
-            border: none; border-radius: 8px; font-weight: bold; cursor: pointer;
+        #error-screen { display: none; padding: 30px; color: #fff; text-align: center; position: fixed; inset: 0; background: #450a0a; z-index: 10000; overflow-y: auto; }
+        #error-screen b { color: #fca5a5; display: block; margin: 15px 0; font-family: monospace; }
+        .btn {
+            margin: 10px; padding: 12px 24px; background: #EFD103; color: #000;
+            border: none; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 14px;
         }
-        #log { font-family: monospace; font-size: 10px; color: #94a3b8; margin-top: 10px; max-width: 80%; }
+        .btn-sec { background: rgba(255,255,255,0.2); color: #fff; }
+        #log { font-family: monospace; font-size: 11px; color: #94a3b8; margin-top: 20px; max-width: 90%; line-height: 1.4; }
     </style>
 </head>
 <body>
     <div id="initial-loader">
         <div class="spinner"></div>
-        <div>Carregando sistema...</div>
+        <div style="font-weight: bold; letter-spacing: 0.05em;">CONTROLE GERAL</div>
+        <div style="font-size: 13px; opacity: 0.8; margin-top: 5px;">Carregando sistema...</div>
         <div id="log">Iniciando...</div>
     </div>
 
     <div id="error-screen">
-        <h3>⚠️ Erro ao carregar o sistema</h3>
-        <p id="error-msg"></p>
-        <button class="retry-btn" onclick="location.reload()">Tentar novamente</button>
+        <div style="font-size: 40px; margin-bottom: 10px;">⚠️</div>
+        <h3 style="margin: 0;">Erro ao carregar o sistema</h3>
+        <p style="opacity: 0.8; font-size: 14px;">Não foi possível inicializar a aplicação.</p>
+        <b id="error-msg"></b>
+        <div>
+            <button class="btn" onclick="location.reload()">Tentar novamente</button>
+            <button class="btn btn-sec" onclick="clearAndReload()">Limpar Cache</button>
+        </div>
+        <p style="font-size: 12px; margin-top: 20px; opacity: 0.5;">Se o erro persistir, verifique sua conexão com a internet ou se o link está correto.</p>
     </div>
 
     <div id="root"></div>
 
     <script>
         function addLog(msg) {
-            console.log(msg);
+            console.log('[Init]', msg);
             const el = document.getElementById('log');
-            if (el) el.textContent += '\n' + msg;
+            if (el) el.textContent += ' > ' + msg;
         }
-        window.addEventListener('error', function(e) {
-            console.error('Runtime error:', e);
-            showError('Erro de execução: ' + (e.message || 'Erro desconhecido'));
-        });
         function showError(msg) {
+            addLog('ERRO: ' + msg);
             const loader = document.getElementById('initial-loader');
             const screen = document.getElementById('error-screen');
             const msgEl = document.getElementById('error-msg');
             if (loader) loader.style.display = 'none';
             if (screen) screen.style.display = 'block';
             if (msgEl) msgEl.textContent = msg;
+            // Alerta como último recurso para mobile
+            setTimeout(() => { if(window.innerWidth < 768) alert('Erro ao carregar: ' + msg); }, 100);
         }
+        function clearAndReload() {
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(regs => {
+                    for(let reg of regs) reg.unregister();
+                    caches.keys().then(keys => {
+                        for(let key of keys) caches.delete(key);
+                        location.reload(true);
+                    });
+                });
+            } else {
+                location.reload(true);
+            }
+        }
+        window.onerror = function(msg, url, line) {
+            showError(msg + ' (Linha: ' + line + ')');
+            return false;
+        };
     </script>
 
     <!-- Bibliotecas Externas (CDNs) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" onload="addLog('React OK')" onerror="showError('Falha: React CDN')"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" onload="addLog('ReactDOM OK')" onerror="showError('Falha: ReactDOM CDN')"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" onload="addLog('XLSX OK')" onerror="addLog('Aviso: XLSX CDN falhou')"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" onload="addLog('React OK')" onerror="showError('Falha ao baixar React (CDN)')"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" onload="addLog('ReactDOM OK')" onerror="showError('Falha ao baixar ReactDOM (CDN)')"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" onload="addLog('XLSX OK')" onerror="addLog('Aviso: XLSX Offline')"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" onload="addLog('jsPDF OK')"></script>
     <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js" onload="addLog('docx OK')"></script>
 
-    <!-- Scripts Locais (Usando caminhos absolutos para SPA) -->
-    <script src="/brasao.js" onload="addLog('Brasao OK')" onerror="showError('Falha: brasao.js local')"></script>
-    <script src="/app.js" onload="addLog('App Script OK')" onerror="showError('Falha: app.js local')"></script>
+    <!-- Scripts Locais -->
+    <script src="brasao.js" onload="addLog('Brasao OK')" onerror="showError('Falha: brasao.js')"></script>
+    <script src="app.js" onload="addLog('App Script OK')" onerror="showError('Falha: app.js')"></script>
 
     <script>
-        addLog('Iniciando montagem...');
+        addLog('Montando App...');
         try {
             if (window.App && window.ReactDOM) {
                 const rootElement = document.getElementById('root');
                 if (rootElement) {
                     const root = ReactDOM.createRoot(rootElement);
                     root.render(React.createElement(window.App));
-                    addLog('Render ok');
+                    addLog('Pronto!');
                     setTimeout(() => {
                         const loader = document.getElementById('initial-loader');
                         if (loader) loader.style.display = 'none';
                         document.body.style.overflow = 'auto';
-                    }, 500);
+                    }, 800);
                 } else {
-                    showError('Elemento #root não encontrado.');
+                    showError('Elemento #root ausente');
                 }
             } else {
                 let missing = [];
                 if (!window.React) missing.push('React');
                 if (!window.ReactDOM) missing.push('ReactDOM');
-                if (!window.App) missing.push('App.js (não carregado ou com erro)');
-                showError('Falha ao carregar componentes: ' + missing.join(', '));
+                if (!window.App) missing.push('App (lógica do sistema)');
+                showError('Componentes faltando: ' + missing.join(', '));
             }
         } catch (err) {
-            showError('Erro na inicialização: ' + err.message);
+            showError(err.message);
         }
 
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js').then(r => addLog('SW OK')).catch(e => console.warn('SW Fail:', e));
+                navigator.serviceWorker.register('sw.js').then(r => addLog('PWA OK')).catch(e => console.warn('PWA Fail:', e));
             });
         }
     </script>

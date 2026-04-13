@@ -1,5 +1,5 @@
-// ─── ControleGeral Service Worker v4.1 ───────────────────────────────────────
-const CACHE = 'cgel-v4.1';
+// ─── ControleGeral Service Worker v4.2 ───────────────────────────────────────
+const CACHE = 'cgel-v4.2';
 const CDN_URLS = [
   'https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js',
@@ -12,8 +12,8 @@ self.addEventListener('install', function(e) {
   e.waitUntil(
     caches.open(CACHE).then(function(cache) {
       CDN_URLS.forEach(function(url) { cache.add(url).catch(function() {}); });
-      return cache.addAll(['/', '/index.html', '/app.js', '/brasao.js', '/manifest.json'])
-        .catch(function(err) { console.warn('PWA: Cache Fail:', err); });
+      return cache.addAll(['index.html', 'app.js', 'brasao.js', 'manifest.json', './'])
+        .catch(function(err) { console.warn('PWA Install: Cache Fail:', err); });
     }).then(function() { return self.skipWaiting(); })
   );
 });
@@ -43,7 +43,7 @@ self.addEventListener('fetch', function(e) {
   e.respondWith(fetch(e.request).then(resp => {
     if (resp.ok) { var clone = resp.clone(); caches.open(CACHE).then(c => c.put(e.request, clone)); }
     return resp;
-  }).catch(() => caches.match(e.request).then(cached => cached || caches.match('/index.html'))));
+  }).catch(() => caches.match(e.request).then(cached => cached || caches.match('index.html'))));
 });
 
 self.addEventListener('message', function(e) {

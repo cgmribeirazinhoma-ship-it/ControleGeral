@@ -3,11 +3,20 @@
   "outputDirectory": ".",
   "rewrites": [
     {
-      "source": "/((?!.*\\.).*)",
+      "source": "/((?!.*\.).*)",
       "destination": "/index.html"
     }
   ],
   "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "x-vercel-skip-toolbar",
+          "value": "1"
+        }
+      ]
+    },
     {
       "source": "/brasao.js",
       "headers": [

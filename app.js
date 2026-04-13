@@ -75,7 +75,14 @@
 */
 
 // ─── React hooks — extraídos do UMD global para uso sem prefixo ───────────────
-const { useState, useEffect, useCallback, useMemo, useRef } = React;
+
+// Proxy dinâmico para os hooks do React (evita ReferenceError na carga inicial)
+const useState = (...args) => React.useState(...args);
+const useEffect = (...args) => React.useEffect(...args);
+const useCallback = (...args) => React.useCallback(...args);
+const useMemo = (...args) => React.useMemo(...args);
+const useRef = (...args) => React.useRef(...args);
+
 // SheetJS (Excel) — carregado via CDN como window.XLSX (não redeclarar aqui)
 // XLSX está disponível como variável global via CDN no index.html
 
@@ -84,6 +91,38 @@ const { useState, useEffect, useCallback, useMemo, useRef } = React;
 // ─── Gráficos nativos SVG/CSS — sem dependência externa ──────────────────────
 
 // ─── SQL.js loader ────────────────────────────────────────────────────────────
+
+// Polyfill e Fallbacks para Crypto (Segurança ultra-robusta contra bloqueios de navegador)
+const _crypto = (typeof window !== 'undefined' ? (window.crypto || window.msCrypto) : null);
+
+
+async function hashSenha(salt, senha) {
+  const e = new TextEncoder();
+  try {
+    if (_crypto && _crypto.subtle && _crypto.subtle.digest) {
+      const b = await _crypto.subtle.digest('SHA-256', e.encode(salt + senha));
+      return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
+    }
+  } catch (err) { console.warn('Erro no hash nativo:', err); }
+
+  // Fallback seguro (não-criptográfico) para contextos restritos (HTTP)
+  console.warn('Usando fallback de hash simplificado.');
+  let h = 0;
+  const s = salt + senha;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) - h) + s.charCodeAt(i) | 0;
+  return Math.abs(h).toString(16);
+}
+
+function _generateUUID() {
+  try {
+    if (_crypto && _crypto.randomUUID) return _crypto.randomUUID();
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0, v = (c === 'x' ? r : (r & 0x3 | 0x8));
+      return v.toString(16);
+    });
+  } catch (e) { return Math.random().toString(36).slice(2) + Date.now().toString(36); }
+}
+
 let _sqlJs = null;
 async function loadSqlJs() {
   if (_sqlJs) return _sqlJs;
@@ -97,7 +136,7 @@ async function loadSqlJs() {
         });
         _sqlJs = SQL;
         res(SQL);
-      } catch {
+      } catch (e) {
         res(null);
       }
     };
@@ -150,7 +189,7 @@ async function _sbTestConnection() {
     );
     _sbLive = res.ok;
     return _sbLive;
-  } catch {
+  } catch (e) {
     _sbLive = false;
     return false;
   }
@@ -221,7 +260,7 @@ async function _sbFetch(method, chave, valor) {
       });
       return res.ok;
     }
-  } catch { return null; }
+  } catch (e) { return null; }
 }
 
 const MEM = {};
@@ -231,16 +270,16 @@ const ST = {
       try {
         const raw = await _sbFetch("GET", k);
         if (raw !== null) {
-          try { localStorage.setItem("cgel_" + k, raw); } catch {}
+          try { localStorage.setItem("cgel_" + k, raw); } catch (e) {}
           return JSON.parse(raw);
         }
-      } catch {}
+      } catch (e) {}
     }
     try {
       const raw = localStorage.getItem("cgel_" + k);
       if (raw !== null) return JSON.parse(raw);
-    } catch {}
-    return MEM[k] ?? null;
+    } catch (e) {}
+    return MEM[k] !== undefined ? MEM[k] : null;
   },
 
   // Retorna { ok: bool, cloud: bool } — permite saber se salvou na nuvem
@@ -253,18 +292,18 @@ const ST = {
         const result = await _sbFetch("POST", k, serialized);
         cloud = result === true;
         if (cloud) _sbLive = true;
-      } catch {}
+      } catch (e) {}
     }
     try {
       localStorage.setItem("cgel_" + k, serialized);
-    } catch {}
+    } catch (e) {}
     return { ok: true, cloud };
   },
 
   async del(k) {
     delete MEM[k];
-    if (_sbReady) { try { await _sbFetch("DELETE", k); } catch {} }
-    try { localStorage.removeItem("cgel_" + k); } catch {}
+    if (_sbReady) { try { await _sbFetch("DELETE", k); } catch (e) {} }
+    try { localStorage.removeItem("cgel_" + k); } catch (e) {}
     return true;
   },
 
@@ -276,17 +315,17 @@ const ST = {
         if (rows !== null) {
           // Atualiza cache local com todos os registros recebidos
           rows.forEach(r => {
-            try { localStorage.setItem("cgel_" + r.chave, r.valor); } catch {}
+            try { localStorage.setItem("cgel_" + r.chave, r.valor); } catch (e) {}
           });
           return rows
             .filter(r => r.valor)
             .map(r => {
               try { return { key: r.chave, value: JSON.parse(r.valor) }; }
-              catch { return null; }
+              catch (e) { return null; }
             })
             .filter(Boolean);
         }
-      } catch {}
+      } catch (e) {}
     }
     // Fallback offline: lê localStorage deste navegador
     try {
@@ -296,12 +335,12 @@ const ST = {
         if (k && k.startsWith("cgel_" + prefix)) {
           const raw = localStorage.getItem(k);
           if (raw) {
-            try { results.push({ key: k.slice(5), value: JSON.parse(raw) }); } catch {}
+            try { results.push({ key: k.slice(5), value: JSON.parse(raw) }); } catch (e) {}
           }
         }
       }
       if (results.length) return results;
-    } catch {}
+    } catch (e) {}
     return Object.entries(MEM)
       .filter(([k]) => k.startsWith(prefix))
       .map(([k, v]) => ({ key: k, value: v }));
@@ -378,7 +417,7 @@ async function loadAllHistorico() {
       "Órgão":               p["ORGÃO"] || "",
       "Fornecedor":          p["FORNECEDOR"] || "",
       "Valor":               p["VALOR"] || "",
-      "Tipo":                tipoKey ? (TINFO[tipoKey]?.label || tipoKey) : "",
+      "Tipo":                tipoKey ? (TINFO[tipoKey].label || tipoKey) : "",
       "TipoKey":             tipoKey,
       // Vazio = ainda não processado (renderizado como PENDENTE, nunca como INDEFERIDO)
       "Decisão":             dec === "deferir" ? "DEFERIDO" : dec === "indeferir" ? "INDEFERIDO" : "",
@@ -944,37 +983,6 @@ function _buildMapDataInner(processos) {
 // [FIX1] Versão do schema de usuários — incrementar aqui força recriação do admin
 // se o código de hash mudar entre deploys, evitando login quebrado.
 const USERS_SCHEMA_V = 3;
-
-// Polyfill e Fallbacks para Crypto (Segurança ultra-robusta contra bloqueios de navegador)
-const _crypto = (typeof window !== 'undefined' ? (window.crypto || window.msCrypto) : null);
-
-function _generateUUID() {
-  try {
-    if (_crypto && _crypto.randomUUID) return _crypto.randomUUID();
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-      const r = Math.random() * 16 | 0, v = (c === 'x' ? r : (r & 0x3 | 0x8));
-      return v.toString(16);
-    });
-  } catch (e) { return Math.random().toString(36).slice(2) + Date.now().toString(36); }
-}
-
-async function hashSenha(salt, senha) {
-  const e = new TextEncoder();
-  try {
-    if (_crypto && _crypto.subtle && _crypto.subtle.digest) {
-      const b = await _crypto.subtle.digest("SHA-256", e.encode(salt + senha));
-      return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, "0")).join("");
-    }
-  } catch (err) { console.warn("Erro no hash nativo:", err); }
-
-  // Fallback seguro (não-criptográfico) para contextos restritos (HTTP)
-  console.warn("Usando fallback de hash simplificado.");
-  let h = 0;
-  const s = salt + senha;
-  for (let i = 0; i < s.length; i++) h = ((h << 5) - h) + s.charCodeAt(i) | 0;
-  return Math.abs(h).toString(16);
-}
-
 async function loadUsers() {
   let u = await ST.get("users");
   // Recria admin se: não existe, ou schemaV desatualizado (hash de versão anterior)
@@ -982,7 +990,7 @@ async function loadUsers() {
     const salt = _generateUUID().replace(/-/g, "").slice(0, 32);
     const hash = await hashSenha(salt, "admin123");
     // Preserva outros usuários se existirem, apenas garante admin válido
-    const admExistente = u?.admin;
+    const admExistente = u && u.admin;
     u = {
       ...(u || {}),
       admin: admExistente && u.__schemaV === USERS_SCHEMA_V ? admExistente : {
@@ -1071,7 +1079,7 @@ async function importarExcel(file) {
     //   Ex: planilha tem linhas antigas com Nº 2774-3095 → descartadas (> 2591)
     //       e linhas vigentes com Nº 1-2591 → mantidas (<= 2591)
     const nd = row["NÚMERO DO DOCUMENTO"];
-    const ndNum = parseInt(String(nd ?? "").trim(), 10);
+    const ndNum = parseInt(String(nd || "").trim(), 10);
     const ehValido = temDado && !isNaN(ndNum) && ndNum > 0;
     const ehBlocoVigente = lastNum === 0 || ndNum <= lastNum;
     if (ehValido && ehBlocoVigente) rows.push(row);
@@ -1226,7 +1234,7 @@ self.onmessage = async function(e) {
         row[colName] = valor;
       }
       const nd = row["NÚMERO DO DOCUMENTO"];
-      const ndNum = parseInt(String(nd ?? "").trim(), 10);
+      const ndNum = parseInt(String(nd || "").trim(), 10);
       const ehValido = temDado && !isNaN(ndNum) && ndNum > 0;
       const ehBlocoVigente = lastNum === 0 || ndNum <= lastNum;
       if (ehValido && ehBlocoVigente) rows.push(row);
@@ -1300,12 +1308,12 @@ async function readSqliteDB(file) {
         for (const row of values) {
           const o = {};
           columns.forEach((c, i) => {
-            o[canonCol(c)] = row[i] ?? "";
+            o[canonCol(c)] = row[i] || "";
           });
           processos.push(o);
         }
       }
-    } catch {}
+    } catch (e) {}
     try {
       const r = db.exec("SELECT * FROM historico");
       if (r[0]) {
@@ -1316,12 +1324,12 @@ async function readSqliteDB(file) {
         for (const row of values) {
           const o = {};
           columns.forEach((c, i) => {
-            o[c] = row[i] ?? "";
+            o[c] = row[i] || "";
           });
           historico.push(o);
         }
       }
-    } catch {}
+    } catch (e) {}
     try {
       const r = db.exec("SELECT * FROM orgaos_config");
       if (r[0]) {
@@ -1332,7 +1340,7 @@ async function readSqliteDB(file) {
         for (const row of values) {
           const o = {};
           columns.forEach((c, i) => {
-            o[c] = row[i] ?? "";
+            o[c] = row[i] || "";
           });
           if (o.orgao) orgaosConfig[o.orgao] = {
             secretario: o.secretario || "",
@@ -1340,7 +1348,7 @@ async function readSqliteDB(file) {
           };
         }
       }
-    } catch {}
+    } catch (e) {}
     db.close();
     return {
       processos,
@@ -1371,7 +1379,7 @@ function cleanBrasaoAsync(src) {
         for (let i = 0; i < px.length; i += 4) if (px[i] > 220 && px[i + 1] > 220 && px[i + 2] > 220) px[i + 3] = 0;
         ctx.putImageData(id, 0, 0);
         resolve(canvas.toDataURL("image/png"));
-      } catch {
+      } catch (e) {
         resolve(src);
       }
     };
@@ -1454,11 +1462,11 @@ async function gerarRelatorioPDF(processos, mesAno, appConfig) {
     else if (p["_decisao"] === "indeferir") porOrgao[o].indef++;
   });
   const totalGeral = filtrados.reduce((a,p) => a + parseBRL(p["VALOR"]), 0);
-  const ctrl = appConfig?.controlador || {};
+  const ctrl = appConfig.controlador || {};
 
   // ── Cabeçalho ──
   if (window.BRASAO_B64) {
-    try { doc.addImage(window.BRASAO_B64, "PNG", (W-25)/2, 8, 25, 18); } catch {}
+    try { doc.addImage(window.BRASAO_B64, "PNG", (W-25)/2, 8, 25, 18); } catch (e) {}
   }
   doc.setFont("helvetica", "bold"); doc.setFontSize(11);
   doc.text("ESTADO DO MARANHÃO", W/2, 30, { align: "center" });
@@ -2875,8 +2883,8 @@ function Brasao({
   style = {}
 }) {
   // Lê diretamente de window.BRASAO_B64 — brasao.js carrega ANTES (síncrono no index.html)
-  const [src, setSrc] = React.useState(() => window.BRASAO_B64 || null);
-  React.useEffect(() => {
+  const [src, setSrc] = useState(() => window.BRASAO_B64 || null);
+  useEffect(() => {
     // Garante atualização caso haja qualquer delay residual
     if (window.BRASAO_B64 && src !== window.BRASAO_B64) {
       setSrc(window.BRASAO_B64);
@@ -2970,8 +2978,8 @@ function ConfirmModal({ msg, titulo, onOk, onCancel, dark, tipo = "warn" }) {
 
 // ─── [FIX3] ModalSenha — substitui window.prompt para redefinir senha ─────────
 function ModalSenha({ login, onOk, onCancel, dark }) {
-  const [senha, setSenha] = React.useState("");
-  const [ver, setVer] = React.useState(false);
+  const [senha, setSenha] = useState("");
+  const [ver, setVer] = useState(false);
   return /*#__PURE__*/React.createElement("div", {
     style: {
       position: "fixed", inset: 0, background: "rgba(0,0,0,.6)",
@@ -3033,17 +3041,17 @@ function LoginPage({
   const [erro, setErro] = useState("");
   // [FIX7] Tentativas persistidas em sessionStorage — resiste a F5
   const [tent, setTent] = useState(() => {
-    try { return parseInt(sessionStorage.getItem("cgel_login_tent") || "0", 10); } catch { return 0; }
+    try { return parseInt(sessionStorage.getItem("cgel_login_tent") || "0", 10); } catch (e) { return 0; }
   });
   const [bloq, setBloq] = useState(() => {
-    try { return sessionStorage.getItem("cgel_login_bloq") === "1"; } catch { return false; }
+    try { return sessionStorage.getItem("cgel_login_bloq") === "1"; } catch (e) { return false; }
   });
   const [count, setCount] = useState(() => {
     try {
       const exp = parseInt(sessionStorage.getItem("cgel_login_exp") || "0", 10);
       const rem = Math.max(0, Math.ceil((exp - Date.now()) / 1000));
       return rem;
-    } catch { return 0; }
+    } catch (e) { return 0; }
   });
   useEffect(() => {
     if (!bloq || count <= 0) return;
@@ -3064,7 +3072,7 @@ function LoginPage({
     const u = await checkLogin(login.trim(), senha);
     setLoading(false);
     if (u) {
-      try { sessionStorage.removeItem("cgel_login_tent"); sessionStorage.removeItem("cgel_login_bloq"); sessionStorage.removeItem("cgel_login_exp"); } catch {}
+      try { sessionStorage.removeItem("cgel_login_tent"); sessionStorage.removeItem("cgel_login_bloq"); sessionStorage.removeItem("cgel_login_exp"); } catch (e) {}
       onLogin({
         ...u,
         login: login.trim()
@@ -3072,12 +3080,12 @@ function LoginPage({
     } else {
       const nt = tent + 1;
       setTent(nt);
-      try { sessionStorage.setItem("cgel_login_tent", String(nt)); } catch {}
+      try { sessionStorage.setItem("cgel_login_tent", String(nt)); } catch (e) {}
       if (nt >= 5) {
         const exp = Date.now() + 300000;
         setBloq(true);
         setCount(300);
-        try { sessionStorage.setItem("cgel_login_bloq", "1"); sessionStorage.setItem("cgel_login_exp", String(exp)); } catch {}
+        try { sessionStorage.setItem("cgel_login_bloq", "1"); sessionStorage.setItem("cgel_login_exp", String(exp)); } catch (e) {}
         setErro("Muitas tentativas. Aguarde 5 minutos.");
       } else setErro(`Credenciais inválidas. Tentativa ${nt}/5.`);
     }
@@ -3188,8 +3196,8 @@ function Sidebar({
   pendentesAtrasados = 0,
   onExportExcel
 }) {
-  const isAdmin = user?.perfil === "admin";
-  const isOnline = sbOnline ?? _sbLive;
+  const isAdmin = user && user.perfil === "admin";
+  const isOnline = sbOnline || _sbLive;
   const nav = [{
     k: "processos",
     icon: "📄",
@@ -3318,7 +3326,7 @@ function Sidebar({
       textOverflow: "ellipsis",
       whiteSpace: "nowrap"
     }
-  }, user?.nome), /*#__PURE__*/React.createElement("div", {
+  }, user && user.nome), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 9.5,
       color: MUN.goldDk,
@@ -3327,7 +3335,7 @@ function Sidebar({
       fontWeight: 600,
       marginTop: 2
     }
-  }, user?.perfil)), page === "processos" && /*#__PURE__*/React.createElement("div", {
+  }, user && user.perfil)), page === "processos" && /*#__PURE__*/React.createElement("div", {
     style: {
       margin: "8px 10px 0",
       padding: "8px 12px",
@@ -3551,7 +3559,7 @@ function NovoProcessoPage({
   onEditModeChange
 }) {
   const mp = useMemo(() => buildMapData(processos), [processos]);
-  const orgAtivos = useMemo(() => mp.allOrgaos.filter(o => orgaosConfig[o]?.ativo !== false), [mp, orgaosConfig]);
+  const orgAtivos = useMemo(() => mp.allOrgaos.filter(o => orgaosConfig[o] && orgaosConfig[o].ativo !== false), [mp, orgaosConfig]);
   const blankForm = useCallback(() => ({
     numDoc: String(nextProcessoNumber || proxNumero(processos)),
     dataDoc: todayISO(),
@@ -3708,10 +3716,10 @@ function NovoProcessoPage({
   useEffect(() => {
     const h = e => {
       if (e.ctrlKey || e.metaKey) {
-        if (e.key === "s" || e.key === "S") { e.preventDefault(); handleSalvarRef.current?.(); }
-        if (e.key === "p" || e.key === "P") { e.preventDefault(); handleGerarPDFRef.current?.(); }
-        if (e.key === "l" || e.key === "L") { e.preventDefault(); handleLimparRef.current?.(); }
-        if (e.key === "d" || e.key === "D") { e.preventDefault(); handleDuplicarUltimoRef.current?.(); }
+        if (e.key === "s" || e.key === "S") { e.preventDefault(); handleSalvarRef.current && handleSalvarRef.current(); }
+        if (e.key === "p" || e.key === "P") { e.preventDefault(); handleGerarPDFRef.current && handleGerarPDFRef.current(); }
+        if (e.key === "l" || e.key === "L") { e.preventDefault(); handleLimparRef.current && handleLimparRef.current(); }
+        if (e.key === "d" || e.key === "D") { e.preventDefault(); handleDuplicarUltimoRef.current && handleDuplicarUltimoRef.current(); }
       }
       if (e.key === "?" && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
@@ -3785,7 +3793,7 @@ function NovoProcessoPage({
     contrato: f.contrato || mp.modalContrato[v] || ""
   }));
   const getChks = t => {
-    const n = CHK[t]?.length || 0;
+    const n = CHK[t].length || 0;
     const c = chks[t];
     return c && c.length === n ? c : Array(n).fill(true);
   };
@@ -3842,7 +3850,7 @@ function NovoProcessoPage({
       tipo_doc:    tipDoc,
       tipo_nf:     tipNf,
       obs:         form.obs,
-      controlador: appConfig?.controlador || {}
+      controlador: appConfig.controlador || {}
     };
   };
   const handleGerarPDF = async () => {    if (loading) return;
@@ -3970,7 +3978,7 @@ function NovoProcessoPage({
     iframe.style.cssText = "position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;";
     iframe.src = url;
     const cleanup = () => {
-      try { document.body.removeChild(iframe); } catch {}
+      try { document.body.removeChild(iframe); } catch (e) {}
       URL.revokeObjectURL(url);
     };
     document.body.appendChild(iframe);
@@ -4079,7 +4087,7 @@ function NovoProcessoPage({
       cursor: "pointer"
     }
   }, "\u2715 Cancelar")), /*#__PURE__*/React.createElement(PageHeader, {
-    icon: ti?.icon || "📄",
+    icon: ti.icon || "📄",
     title: editMode ? `✏️ Editando Processo #${editMode}` : "Novo Processo",
     sub: editMode ? "Alterações substituirão o registro original" : "Preencha os dados e gere os documentos",
     dark: dark,
@@ -4891,8 +4899,8 @@ function BuscarPage({
     }
     if (filtAno) r = r.filter(p => String(p["DATA"] || "").includes(filtAno));
     return [...r].sort((a, b) => {
-      const va = a[sort.col] ?? "";
-      const vb = b[sort.col] ?? "";
+      const va = a[sort.col] || "";
+      const vb = b[sort.col] || "";
       // Ordenação numérica para NÚMERO DO DOCUMENTO
       if (sort.col === "NÚMERO DO DOCUMENTO") {
         const na = parseInt(String(va).trim(), 10);
@@ -5292,8 +5300,8 @@ function DashboardPage({
       m[k] = (m[k] || 0) + 1;
     });
     return Object.entries(m).map(([k, n]) => ({
-      key: k, label: TINFO[k]?.label || k,
-      cor: TINFO[k]?.cor || "#888", n,
+      key: k, label: TINFO[k].label || k,
+      cor: TINFO[k].cor || "#888", n,
       pct: filtered.length ? (n / filtered.length) * 100 : 0
     })).sort((a,b) => b.n - a.n);
   }, [filtered]);
@@ -6273,7 +6281,7 @@ function OrgaosPage({
 
 // ─── ControladorForm ──────────────────────────────────────────────────────────
 function ControladorForm({ appConfig, setAppConfig, dark, toast }) {
-  const ctrl = appConfig?.controlador || {};
+  const ctrl = appConfig.controlador || {};
   const [nome,     setNome]     = useState(ctrl.nome     || "");
   const [cargo,    setCargo]    = useState(ctrl.cargo    || "");
   const [portaria, setPortaria] = useState(ctrl.portaria || "");
@@ -6282,7 +6290,7 @@ function ControladorForm({ appConfig, setAppConfig, dark, toast }) {
 
   // Sincronizar se appConfig mudar externamente
   useEffect(() => {
-    const c = appConfig?.controlador || {};
+    const c = appConfig.controlador || {};
     setNome(c.nome     || "");
     setCargo(c.cargo   || "");
     setPortaria(c.portaria || "");
@@ -6387,7 +6395,7 @@ function ConfigPage({
   const [apagarLoading, setApagarLoading] = useState(false);
   // [FIX-BACKUP] ConfirmModal para restaurar backup (substitui window.confirm)
   const [confirmBackup, setConfirmBackup] = useState(null); // { item }
-  const isAdmin = user?.perfil === "admin";
+  const isAdmin = user && user.perfil === "admin";
   const handleConfirmarApagar = async () => {
     if (!senhaApagar.trim()) {
       setApagarErr("Digite sua senha.");
@@ -6396,7 +6404,7 @@ function ConfigPage({
     setApagarLoading(true);
     setApagarErr("");
     try {
-      const ok = await checkLogin(user.login, senhaApagar.trim());
+      const ok = await checkLogin(user && user.login, senhaApagar.trim());
       if (!ok) {
         setApagarErr("Senha incorreta. Tente novamente.");
         return;
@@ -6417,8 +6425,8 @@ function ConfigPage({
     toast("✅ Excel exportado!");
   };
   // [G-S2] Restaurar backup
-  const [backupList, setBackupList] = React.useState([]);
-  React.useEffect(() => {
+  const [backupList, setBackupList] = useState([]);
+  useEffect(() => {
     ST.list("backup_").then(rows => {
       if (rows) setBackupList(rows.sort((a,b) => b.key.localeCompare(a.key)).slice(0,4));
     });
@@ -6430,14 +6438,14 @@ function ConfigPage({
   const confirmarRestaurarBackup = async (item) => {
     setConfirmBackup(null);
     const snap = item.value;
-    if (snap?.processos) { await ST.set("processos", snap.processos); }
-    if (snap?.historico) { await ST.set("historico", snap.historico); }
+    if (snap.processos) { await ST.set("processos", snap.processos); }
+    if (snap.historico) { await ST.set("historico", snap.historico); }
     toast("✅ Backup restaurado! Recarregando...", "info");
     setTimeout(() => location.reload(), 1500);
   };
-  const [importPct, setImportPct] = React.useState(0); // [M-P3] progresso
+  const [importPct, setImportPct] = useState(0); // [M-P3] progresso
   const handleImportExcel = async e => {
-    const file = e.target.files?.[0];
+    const file = e.target.files[0];
     if (!file) return;
     setImportLoading(true);
     setImportPct(0);
@@ -6455,7 +6463,7 @@ function ConfigPage({
     }
   };
   const handleImportDB = async e => {
-    const file = e.target.files?.[0];
+    const file = e.target.files[0];
     if (!file) return;
     setDbLoading(true);
     try {
@@ -6483,7 +6491,7 @@ function ConfigPage({
   // [FIX-BACKUP] Modal de confirmação para restaurar backup
   confirmBackup && /*#__PURE__*/React.createElement(ConfirmModal, {
     titulo: "Restaurar Backup",
-    msg: "Restaurar backup de " + (confirmBackup.item?.key||"").replace("backup_","") + "?\n\nIsso substituirá todos os dados atuais. Esta ação não pode ser desfeita.",
+    msg: "Restaurar backup de " + (confirmBackup.item.key||"").replace("backup_","") + "?\n\nIsso substituirá todos os dados atuais. Esta ação não pode ser desfeita.",
     tipo: "danger",
     dark: dark,
     onOk: () => confirmarRestaurarBackup(confirmBackup.item),
@@ -6687,7 +6695,7 @@ function ConfigPage({
       /*#__PURE__*/React.createElement("div", null,
         /*#__PURE__*/React.createElement("div", { style: { fontSize: 13, fontWeight: 600, color: tc } }, item.key.replace("backup_","")),
         /*#__PURE__*/React.createElement("div", { style: { fontSize: 11, color: "#94a3b8" } },
-          (item.value?.processos?.length || 0), " processos · ", (item.value?.historico?.length || 0), " histórico")
+          (item.value.processos.length || 0), " processos · ", (item.value.historico.length || 0), " histórico")
       ),
       /*#__PURE__*/React.createElement("button", {
         onClick: () => handleRestaurarBackup(item),
@@ -6816,7 +6824,7 @@ async function _incrementarVersao() {
     const atual = (await ST.get("_versao_banco")) || 0;
     await _sbFetch("POST", "_versao_banco", JSON.stringify(Number(atual) + 1));
     _versaoLocal = Number(atual) + 1;
-  } catch {}
+  } catch (e) {}
 }
 
 async function _versaoBancoCambou() {
@@ -6826,7 +6834,7 @@ async function _versaoBancoCambou() {
     const remota = raw !== null ? JSON.parse(raw) : 0;
     if (remota !== _versaoLocal) { _versaoLocal = remota; return true; }
     return false;
-  } catch { return true; }
+  } catch (e) { return true; }
 }
 
 // ─── [G-S2] Backup automático semanal ────────────────────────────────────────
@@ -6985,7 +6993,7 @@ function App() {
           try {
             const localN = parseInt(JSON.parse(localStorage.getItem("cgel_processo_next_anchor")||"0"),10)||0;
             if (n > localN) localStorage.setItem("cgel_processo_next_anchor", JSON.stringify(n));
-          } catch {}
+          } catch (e) {}
         }
       } catch (err) {
         // [FIX11] Mostra erro explícito se carga inicial falhar
@@ -7022,7 +7030,7 @@ function App() {
   };
   const onSave = useCallback(async (row, form, user) => {
     const numSalvo = String(row["NÚMERO DO DOCUMENTO"] || "").trim();
-    const usuario = user?.login || user?.nome || "sistema";
+    const usuario = user && user.login || user && user.nome || "sistema";
     // [G-S1] Operadores só criam — não editam processos existentes
     const novoItem = {
       ...row,
@@ -7044,7 +7052,7 @@ function App() {
         if (numInt > localAtual) {
           localStorage.setItem("cgel_processo_next_anchor", JSON.stringify(numInt));
         }
-      } catch {}
+      } catch (e) {}
       // 2. Atualiza estado React
       const currentMaxNum = importedMaxNumRef.current || 0;
       if (numInt > currentMaxNum) {
@@ -7061,7 +7069,7 @@ function App() {
       "Órgão": row["ORGÃO"],
       "Fornecedor": row["FORNECEDOR"],
       "Valor": row["VALOR"],
-      "Tipo": TINFO[form.tipo]?.label || form.tipo,
+      "Tipo": TINFO[form.tipo].label || form.tipo,
       "TipoKey": form.tipo,
       "Decisão": form.decisao === "deferir" ? "DEFERIDO" : "INDEFERIDO",
       "CNPJ": row["CNPJ"] || "",
@@ -7115,9 +7123,9 @@ function App() {
 
   const onSaveEdit = useCallback(async (row, form, numOriginal, user) => {
     const numStr = String(numOriginal);
-    const usuario = user?.login || user?.nome || "sistema";
+    const usuario = user && user.login || user && user.nome || "sistema";
     // [G-S1] Apenas admins podem editar processos de outros usuários
-    if (user?.perfil !== "admin") {
+    if (user && user.perfil !== "admin") {
       // Busca o processo original para verificar dono
       const procOriginal = processos.find(p => String(p["NÚMERO DO DOCUMENTO"]) === numStr);
       if (procOriginal && procOriginal["_usuario"] && procOriginal["_usuario"] !== usuario) {
@@ -7145,7 +7153,7 @@ function App() {
         if (_numEditInt > _localAtualEdit) {
           localStorage.setItem("cgel_processo_next_anchor", JSON.stringify(_numEditInt));
         }
-      } catch {}
+      } catch (e) {}
       if (_numEditInt > (importedMaxNumRef.current||0)) {
         setImportedMaxNum(_numEditInt);
         ST.set("imported_max_num", _numEditInt).catch(()=>{});
@@ -7161,7 +7169,7 @@ function App() {
       "Órgão":                 row["ORGÃO"] || "",
       "Fornecedor":            row["FORNECEDOR"] || "",
       "Valor":                 row["VALOR"] || "",
-      "Tipo":                  TINFO[form.tipo]?.label || form.tipo,
+      "Tipo":                  TINFO[form.tipo].label || form.tipo,
       "TipoKey":               form.tipo,
       "Decisão":               form.decisao === "deferir" ? "DEFERIDO" : "INDEFERIDO",
       "CNPJ":                  row["CNPJ"] || "",
@@ -7256,7 +7264,7 @@ function App() {
       tipo_doc:    r2["DOCUMENTO FISCAL"] || "",
       tipo_nf:     r2["TIPO"] || "",
       obs:         r2["_obs"] || "",
-      controlador: appConfig?.controlador || {}
+      controlador: appConfig.controlador || {}
     };
     const r = await gerarPDF(d, tipo, isDeferido, chk, sits);
     if (r.error) {
@@ -7364,8 +7372,8 @@ function App() {
     );
   }, [processos, toast]);
   const handleSyncDB = useCallback(res => {
-    if (res.processos?.length) salvarProcessos(res.processos);
-    if (res.historico?.length) salvarHistorico(res.historico);
+    if (res.processos.length) salvarProcessos(res.processos);
+    if (res.historico.length) salvarHistorico(res.historico);
     if (Object.keys(res.orgaosConfig || {}).length) salvarOrgaos(res.orgaosConfig);
   }, []);
 
@@ -7389,7 +7397,7 @@ function App() {
     try {
       const lv = localStorage.getItem("cgel_processo_next_anchor");
       if (lv !== null) { const n = parseInt(JSON.parse(lv),10); if (!isNaN(n) && n > 0) localAncora = n; }
-    } catch {}
+    } catch (e) {}
 
     const anchoraEfetiva = Math.max(importedMaxNum, localAncora);
 
@@ -7659,7 +7667,7 @@ async function _nextProtocoloNum() {
     try {
       const v = await ST.get("protocolo_seq");
       if (v !== null && !isNaN(parseInt(v))) atual = parseInt(v);
-    } catch {}
+    } catch (e) {}
     // 2. Compara com localStorage (garante que nunca regride)
     try {
       const local = localStorage.getItem("cgel_protocolo_seq");
@@ -7667,10 +7675,10 @@ async function _nextProtocoloNum() {
         const localNum = parseInt(JSON.parse(local));
         if (!isNaN(localNum) && localNum > atual) atual = localNum;
       }
-    } catch {}
+    } catch (e) {}
     const proximo = atual + 1;
     // 3. Persiste ANTES de retornar (evita que outra chamada pegue o mesmo número)
-    try { localStorage.setItem("cgel_protocolo_seq", JSON.stringify(proximo)); } catch {}
+    try { localStorage.setItem("cgel_protocolo_seq", JSON.stringify(proximo)); } catch (e) {}
     // Salva no Supabase; se falhar, localStorage já garantiu a sequência
     ST.set("protocolo_seq", proximo).catch(() => {});
     return proximo;
@@ -7694,11 +7702,11 @@ function ProtocoloPage({ historico = [], processos = [], dark, toast, appConfig 
   const bdr  = dark ? T.borderDark   : T.border;
   const txt  = dark ? T.textMainDark : T.textMain;
 
-  const [modo, setModo]        = React.useState("historico");
-  const [busca, setBusca]      = React.useState("");
-  const [selecionados, setSel] = React.useState([]);
-  const [gerandoPDF, setGer]   = React.useState(false);
-  const [duasVias, setDuasVias]= React.useState(false); // imprimir 2 vias?
+  const [modo, setModo]        = useState("historico");
+  const [busca, setBusca]      = useState("");
+  const [selecionados, setSel] = useState([]);
+  const [gerandoPDF, setGer]   = useState(false);
+  const [duasVias, setDuasVias]= useState(false); // imprimir 2 vias?
 
   // ── Documento externo (modo manual) ──
   const docVazio = () => ({
@@ -7707,7 +7715,7 @@ function ProtocoloPage({ historico = [], processos = [], dark, toast, appConfig 
     nomeRecebedor: "",
     local:         "Governador Edison Lobão – MA",
   });
-  const [docs, setDocs] = React.useState([docVazio()]);
+  const [docs, setDocs] = useState([docVazio()]);
 
   // ── helpers ──
   const parseBRL = v => { const s=String(v||"").replace(/\./g,"").replace(",",".").replace(/[^\d.]/g,""); const n=parseFloat(s); return isNaN(n)?0:n; };
@@ -7715,29 +7723,29 @@ function ProtocoloPage({ historico = [], processos = [], dark, toast, appConfig 
   const MESES    = ["","janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
 
   // ── Itens histórico ──
-  const itensHist = React.useMemo(() => historico.map(h => {
+  const itensHist = useMemo(() => historico.map(h => {
     const proc = processos.find(p => String(p["NÚMERO DO DOCUMENTO"]||"")===String(h["Processo"]||""));
     return {
       _id:       String(h["Processo"]||h["NÚMERO DO DOCUMENTO"]||Math.random()),
       processo:  h["Processo"]||h["NÚMERO DO DOCUMENTO"]||"",
       orgao:     h["Órgão"]||h["ORGÃO"]||"",
       fornecedor:h["Fornecedor"]||h["FORNECEDOR"]||"",
-      cnpj:      h["CNPJ"]||proc?.["CNPJ"]||"",
-      nf:        h["Nº"]||proc?.["Nº"]||"",
+      cnpj:      h["CNPJ"]||(proc && proc["CNPJ"])||"",
+      nf:        h["Nº"]||(proc && proc["Nº"])||"",
       valor:     h["Valor"]||h["VALOR"]||"",
       data:      h["Data"]||h["DATA"]||"",
-      objeto:    h["OBJETO"]||proc?.["OBJETO"]||"",
+      objeto:    h["OBJETO"]||(proc && proc["OBJETO"])||"",
     };
   }), [historico, processos]);
 
-  const filtrados = React.useMemo(() => {
+  const filtrados = useMemo(() => {
     if (!busca.trim()) return itensHist;
     const q = busca.toLowerCase();
     return itensHist.filter(i =>
-      i.processo.toLowerCase().includes(q)||
-      i.orgao.toLowerCase().includes(q)||
-      i.fornecedor.toLowerCase().includes(q)||
-      i.nf.toLowerCase().includes(q)
+      (i.processo||"").toString().toLowerCase().includes(q)||
+      (i.orgao||"").toString().toLowerCase().includes(q)||
+      (i.fornecedor||"").toString().toLowerCase().includes(q)||
+      (i.nf||"").toString().toLowerCase().includes(q)
     );
   }, [itensHist, busca]);
 
@@ -7754,7 +7762,7 @@ function ProtocoloPage({ historico = [], processos = [], dark, toast, appConfig 
   // Cabeçalho padrão (mesmo do gerarPDF individual e relatório mensal)
   function _cabPDF(doc, W) {
     const bW=30.7, bH=22.5, bX=(W-bW)/2, bY=8;
-    if (window.BRASAO_B64) { try { doc.addImage(window.BRASAO_B64,"PNG",bX,bY,bW,bH); } catch {} }
+    if (window.BRASAO_B64) { try { doc.addImage(window.BRASAO_B64,"PNG",bX,bY,bW,bH); } catch (e) {} }
     let y = bY + bH + 4.5;
     doc.setFont("helvetica","bold"); doc.setFontSize(11); doc.setTextColor(0,0,0);
     doc.text("ESTADO DO MARANHÃO",                              W/2, y, {align:"center"}); y+=5;
@@ -7787,7 +7795,7 @@ function ProtocoloPage({ historico = [], processos = [], dark, toast, appConfig 
       const { jsPDF } = await loadJsPDF();
       const doc = new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
       const W=210, M=19;
-      const ctrl = appConfig?.controlador||{};
+      const ctrl = appConfig.controlador||{};
       const d = new Date();
       const hoje = `${String(d.getDate()).padStart(2,"0")} de ${MESES[d.getMonth()+1]} de ${d.getFullYear()}`;
       const ano  = d.getFullYear();
@@ -7910,13 +7918,13 @@ function ProtocoloPage({ historico = [], processos = [], dark, toast, appConfig 
       const { jsPDF } = await loadJsPDF();
       const doc = new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
       const W=210, M=19;
-      const ctrl = appConfig?.controlador||{};
+      const ctrl = appConfig.controlador||{};
       const d = new Date();
       const hoje = `${String(d.getDate()).padStart(2,"0")} de ${MESES[d.getMonth()+1]} de ${d.getFullYear()}`;
       const ano  = d.getFullYear();
       const numStr = String(numProto).padStart(5,"0");
-      const nomeReceb = itens[0]?.nomeRecebedor || ctrl.nome || "Controlador(a) Geral";
-      const localReceb= itens[0]?.local || "Governador Edison Lobão – MA";
+      const nomeReceb = itens[0].nomeRecebedor || ctrl.nome || "Controlador(a) Geral";
+      const localReceb= itens[0].local || "Governador Edison Lobão – MA";
 
       // ── Função interna para uma via do protocolo de recebimento ──
       const desenharViaRecebimento = (doc, isSegundaVia) => {
@@ -8082,7 +8090,7 @@ function ProtocoloPage({ historico = [], processos = [], dark, toast, appConfig 
       /*#__PURE__*/React.createElement("button",{
         onClick:modo==="historico"?gerarPDFSistema:gerarPDFManual,
         disabled:gerandoPDF,
-        style:{...btn(MUN.green),fontSize:14,padding:"10px 28px",opacity:gerandoPDF?.6:1}
+        style:{...btn(MUN.green),fontSize:14,padding:"10px 28px",opacity:gerandoPDF?0.6:1}
       },gerandoPDF?"⏳ Gerando PDF...":"🖨️ Gerar Protocolo PDF"),
       // Checkbox 2 vias
       /*#__PURE__*/React.createElement("label",{
@@ -8101,4 +8109,9 @@ function ProtocoloPage({ historico = [], processos = [], dark, toast, appConfig 
   );
 }
 
-window.App = App;
+
+try {
+  window.App = App;
+} catch (e) {
+  console.error('Falha ao exportar window.App:', e);
+}
