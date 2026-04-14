@@ -1,19 +1,19 @@
-// ─── ControleGeral Service Worker v4.2 ───────────────────────────────────────
-const CACHE = 'cgel-v4.2';
-const CDN_URLS = [
-  'https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
-  'https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js',
+var CACHE = 'cgel-v4.5';
+var ASSETS = [
+  './',
+  'index.html',
+  'app.js',
+  'brasao.js',
+  'manifest.json'
 ];
 
 self.addEventListener('install', function(e) {
   e.waitUntil(
     caches.open(CACHE).then(function(cache) {
-      CDN_URLS.forEach(function(url) { cache.add(url).catch(function() {}); });
-      return cache.addAll(['index.html', 'app.js', 'brasao.js', 'manifest.json', './'])
-        .catch(function(err) { console.warn('PWA Install: Cache Fail:', err); });
+      // Try to add all, but don't fail entire install if one fails
+      return Promise.all(ASSETS.map(function(url) {
+        return cache.add(url).catch(function(err) { console.warn('Fail asset:', url); });
+      }));
     }).then(function() { return self.skipWaiting(); })
   );
 });
@@ -21,31 +21,27 @@ self.addEventListener('install', function(e) {
 self.addEventListener('activate', function(e) {
   e.waitUntil(
     caches.keys().then(function(keys) {
-      return Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)));
+      return Promise.all(keys.filter(function(k) { return k !== CACHE; }).map(function(k) { return caches.delete(k); }));
     }).then(function() { return self.clients.claim(); })
   );
 });
 
 self.addEventListener('fetch', function(e) {
-  var url = e.request.url;
-  if (url.includes('supabase.co') || url.includes('brasilapi.com.br')) {
-    e.respondWith(fetch(e.request).catch(() => new Response(JSON.stringify([]), {headers:{'Content-Type':'application/json'}})));
-    return;
-  }
-  if (url.includes('cdnjs.cloudflare.com') || url.includes('jsdelivr.net')) {
-    e.respondWith(caches.match(e.request).then(cached => cached || fetch(e.request).then(resp => {
-      if (resp.ok) { var clone = resp.clone(); caches.open(CACHE).then(c => c.put(e.request, clone)); }
-      return resp;
-    })));
-    return;
-  }
   if (e.request.method !== 'GET') return;
-  e.respondWith(fetch(e.request).then(resp => {
-    if (resp.ok) { var clone = resp.clone(); caches.open(CACHE).then(c => c.put(e.request, clone)); }
-    return resp;
-  }).catch(() => caches.match(e.request).then(cached => cached || caches.match('index.html'))));
-});
+  var url = e.request.url;
+  if (url.indexOf('supabase.co') !== -1 || url.indexOf('brasilapi.com.br') !== -1) return;
 
-self.addEventListener('message', function(e) {
-  if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
+  e.respondWith(
+    caches.match(e.request).then(function(cached) {
+      return cached || fetch(e.request).then(function(res) {
+        if (res.ok) {
+          var clone = res.clone();
+          caches.open(CACHE).then(function(c) { c.put(e.request, clone); });
+        }
+        return res;
+      }).catch(function() {
+        if (e.request.mode === 'navigate') return caches.match('index.html');
+      });
+    })
+  );
 });

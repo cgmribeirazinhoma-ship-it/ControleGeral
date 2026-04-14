@@ -1,59 +1,22 @@
 {
-  "buildCommand": "",
+  "version": 2,
+  "buildCommand": "echo Skip build",
   "outputDirectory": ".",
   "rewrites": [
-    {
-      "source": "/((?!.*\.).*)",
-      "destination": "/index.html"
-    }
+    { "source": "/((?!.*\\.).*)", "destination": "/index.html" }
   ],
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
-        {
-          "key": "x-vercel-skip-toolbar",
-          "value": "1"
-        }
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" },
+        { "key": "x-vercel-skip-toolbar", "value": "1" }
       ]
     },
     {
-      "source": "/brasao.js",
+      "source": "/(app|brasao|sw)\\.js",
       "headers": [
-        {
-          "key": "Content-Type",
-          "value": "application/javascript"
-        },
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=0, must-revalidate"
-        }
-      ]
-    },
-    {
-      "source": "/sw.js",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "no-cache, no-store, must-revalidate"
-        },
-        {
-          "key": "Service-Worker-Allowed",
-          "value": "/"
-        }
-      ]
-    },
-    {
-      "source": "/app.js",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=0, must-revalidate"
-        },
-        {
-          "key": "Content-Type",
-          "value": "application/javascript"
-        }
+        { "key": "Content-Type", "value": "application/javascript" }
       ]
     }
   ]

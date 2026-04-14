@@ -77,11 +77,11 @@
 // ─── React hooks — extraídos do UMD global para uso sem prefixo ───────────────
 
 // Proxy dinâmico para os hooks do React (evita ReferenceError na carga inicial)
-const useState = (...args) => React.useState(...args);
-const useEffect = (...args) => React.useEffect(...args);
-const useCallback = (...args) => React.useCallback(...args);
-const useMemo = (...args) => React.useMemo(...args);
-const useRef = (...args) => React.useRef(...args);
+var useState = function() { return React.useState.apply(React, arguments); };
+var useEffect = function() { return React.useEffect.apply(React, arguments); };
+var useCallback = function() { return React.useCallback.apply(React, arguments); };
+var useMemo = function() { return React.useMemo.apply(React, arguments); };
+var useRef = function() { return React.useRef.apply(React, arguments); };
 
 // SheetJS (Excel) — carregado via CDN como window.XLSX (não redeclarar aqui)
 // XLSX está disponível como variável global via CDN no index.html
@@ -93,7 +93,7 @@ const useRef = (...args) => React.useRef(...args);
 // ─── SQL.js loader ────────────────────────────────────────────────────────────
 
 // Polyfill e Fallbacks para Crypto (Segurança ultra-robusta contra bloqueios de navegador)
-const _crypto = (typeof window !== 'undefined' ? (window.crypto || window.msCrypto) : null);
+var _crypto = (typeof window !== 'undefined' ? (window.crypto || window.msCrypto) : null);
 
 
 async function hashSenha(salt, senha) {
@@ -112,6 +112,31 @@ async function hashSenha(salt, senha) {
   for (let i = 0; i < s.length; i++) h = ((h << 5) - h) + s.charCodeAt(i) | 0;
   return Math.abs(h).toString(16);
 }
+if (!Array.prototype.includes) {
+  Array.prototype.includes = function(searchElement) {
+    return this.indexOf(searchElement) !== -1;
+  };
+}
+if (!String.prototype.includes) {
+  String.prototype.includes = function(searchString, position) {
+    return this.indexOf(searchString, position) !== -1;
+  };
+}
+
+// Polyfills de compatibilidade
+if (!Object.entries) {
+  Object.entries = function(obj) {
+    var ownProps = Object.keys(obj), i = ownProps.length, resArray = new Array(i);
+    while (i--) resArray[i] = [ownProps[i], obj[ownProps[i]]];
+    return resArray;
+  };
+}
+if (!Object.values) {
+  Object.values = function(obj) {
+    return Object.keys(obj).map(function(k) { return obj[k]; });
+  };
+}
+
 
 function _generateUUID() {
   try {
@@ -993,7 +1018,7 @@ async function loadUsers() {
     const admExistente = u && u.admin;
     u = {
       ...(u || {}),
-      admin: admExistente && u.__schemaV === USERS_SCHEMA_V ? admExistente : {
+      admin: admExistente && u && u.__schemaV === USERS_SCHEMA_V ? admExistente : {
         senha: hash,
         salt,
         nome: "Administrador",
@@ -7741,12 +7766,14 @@ function ProtocoloPage({ historico = [], processos = [], dark, toast, appConfig 
   const filtrados = useMemo(() => {
     if (!busca.trim()) return itensHist;
     const q = busca.toLowerCase();
-    return itensHist.filter(i =>
-      (i.processo||"").toString().toLowerCase().includes(q)||
-      (i.orgao||"").toString().toLowerCase().includes(q)||
-      (i.fornecedor||"").toString().toLowerCase().includes(q)||
-      (i.nf||"").toString().toLowerCase().includes(q)
-    );
+    return itensHist.filter(function(i) {
+      return i && (
+        (i.processo || "").toString().toLowerCase().includes(q) ||
+        (i.orgao || "").toString().toLowerCase().includes(q) ||
+        (i.fornecedor || "").toString().toLowerCase().includes(q) ||
+        (i.nf || "").toString().toLowerCase().includes(q)
+      );
+    });
   }, [itensHist, busca]);
 
   const toggleSel   = id => setSel(p => p.includes(id)?p.filter(x=>x!==id):[...p,id]);
@@ -8115,3 +8142,5 @@ try {
 } catch (e) {
   console.error('Falha ao exportar window.App:', e);
 }
+
+try { if(window.addLog) addLog('App Final OK'); } catch(e) {}

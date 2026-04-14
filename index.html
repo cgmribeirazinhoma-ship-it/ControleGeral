@@ -19,61 +19,62 @@
             margin-bottom: 20px;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
-        #error-screen { display: none; padding: 30px; color: #fff; text-align: center; position: fixed; inset: 0; background: #450a0a; z-index: 10000; overflow-y: auto; }
-        #error-screen b { color: #fca5a5; display: block; margin: 15px 0; font-family: monospace; }
+        #error-screen { display: none; padding: 20px; color: #fff; text-align: center; position: fixed; inset: 0; background: #450a0a; z-index: 10000; overflow-y: auto; }
+        #error-screen b { color: #fca5a5; display: block; margin: 15px 0; font-family: monospace; font-size: 14px; }
         .btn {
-            margin: 10px; padding: 12px 24px; background: #EFD103; color: #000;
+            margin: 5px; padding: 12px 24px; background: #EFD103; color: #000;
             border: none; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 14px;
         }
         .btn-sec { background: rgba(255,255,255,0.2); color: #fff; }
-        #log { font-family: monospace; font-size: 11px; color: #94a3b8; margin-top: 20px; max-width: 90%; line-height: 1.4; }
+        #log { font-family: monospace; font-size: 10px; color: #94a3b8; margin-top: 20px; max-width: 90%; line-height: 1.4; text-align: left; white-space: pre-wrap; opacity: 0.8; }
     </style>
 </head>
 <body>
     <div id="initial-loader">
         <div class="spinner"></div>
-        <div style="font-weight: bold; letter-spacing: 0.05em;">CONTROLE GERAL</div>
+        <div style="font-weight: bold; letter-spacing: 0.05em; font-size: 18px;">CONTROLE GERAL</div>
         <div style="font-size: 13px; opacity: 0.8; margin-top: 5px;">Carregando sistema...</div>
-        <div id="log">Iniciando...</div>
+        <div id="log">Iniciando logs...</div>
     </div>
 
     <div id="error-screen">
         <div style="font-size: 40px; margin-bottom: 10px;">⚠️</div>
         <h3 style="margin: 0;">Erro ao carregar o sistema</h3>
         <p style="opacity: 0.8; font-size: 14px;">Não foi possível inicializar a aplicação.</p>
-        <b id="error-msg"></b>
-        <div>
+        <b id="error-msg">Aguardando detalhes...</b>
+        <div style="margin: 15px 0;">
             <button class="btn" onclick="location.reload()">Tentar novamente</button>
             <button class="btn btn-sec" onclick="clearAndReload()">Limpar Cache</button>
         </div>
-        <p style="font-size: 12px; margin-top: 20px; opacity: 0.5;">Se o erro persistir, verifique sua conexão com a internet ou se o link está correto.</p>
+        <div id="log-error" style="font-family:monospace; font-size:10px; text-align:left; background:rgba(0,0,0,0.3); padding:10px; border-radius:5px; max-height: 200px; overflow-y: auto;"></div>
     </div>
 
     <div id="root"></div>
 
     <script>
+        window.AppMounted = false;
         function addLog(msg) {
             console.log('[Init]', msg);
-            const el = document.getElementById('log');
-            if (el) el.textContent += ' > ' + msg;
+            var el = document.getElementById('log');
+            if (el) el.textContent += '\n> ' + msg;
+            var elErr = document.getElementById('log-error');
+            if (elErr) elErr.textContent += '\n> ' + msg;
         }
         function showError(msg) {
             addLog('ERRO: ' + msg);
-            const loader = document.getElementById('initial-loader');
-            const screen = document.getElementById('error-screen');
-            const msgEl = document.getElementById('error-msg');
+            var loader = document.getElementById('initial-loader');
+            var screen = document.getElementById('error-screen');
+            var msgEl = document.getElementById('error-msg');
             if (loader) loader.style.display = 'none';
             if (screen) screen.style.display = 'block';
             if (msgEl) msgEl.textContent = msg;
-            // Alerta como último recurso para mobile
-            setTimeout(() => { if(window.innerWidth < 768) alert('Erro ao carregar: ' + msg); }, 100);
         }
         function clearAndReload() {
             if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.getRegistrations().then(regs => {
-                    for(let reg of regs) reg.unregister();
-                    caches.keys().then(keys => {
-                        for(let key of keys) caches.delete(key);
+                navigator.serviceWorker.getRegistrations().then(function(regs) {
+                    for(var i=0; i<regs.length; i++) regs[i].unregister();
+                    caches.keys().then(function(keys) {
+                        for(var j=0; j<keys.length; j++) caches.delete(keys[j]);
                         location.reload(true);
                     });
                 });
@@ -81,54 +82,65 @@
                 location.reload(true);
             }
         }
-        window.onerror = function(msg, url, line) {
+        window.onerror = function(msg, url, line, col, error) {
             showError(msg + ' (Linha: ' + line + ')');
             return false;
         };
+        // Timeout de carga
+        setTimeout(function() {
+            if (!window.AppMounted) {
+                showError('O sistema demorou muito para responder. Verifique sua conexão ou limpe o cache.');
+            }
+        }, 15000);
     </script>
 
-    <!-- Bibliotecas Externas (CDNs) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" onload="addLog('React OK')" onerror="showError('Falha ao baixar React (CDN)')"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" onload="addLog('ReactDOM OK')" onerror="showError('Falha ao baixar ReactDOM (CDN)')"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" onload="addLog('XLSX OK')" onerror="addLog('Aviso: XLSX Offline')"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" onload="addLog('React OK')" onerror="showError('Falha React')"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" onload="addLog('ReactDOM OK')" onerror="showError('Falha ReactDOM')"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" onload="addLog('XLSX OK')"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" onload="addLog('jsPDF OK')"></script>
     <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js" onload="addLog('docx OK')"></script>
 
-    <!-- Scripts Locais -->
-    <script src="brasao.js" onload="addLog('Brasao OK')" onerror="showError('Falha: brasao.js')"></script>
-    <script src="app.js" onload="addLog('App Script OK')" onerror="showError('Falha: app.js')"></script>
+    <script src="brasao.js" onload="addLog('Brasao OK')" onerror="showError('Falha brasao.js')"></script>
+    <script src="app.js" onload="addLog('App Script OK')" onerror="showError('Falha app.js')"></script>
 
     <script>
-        addLog('Montando App...');
-        try {
-            if (window.App && window.ReactDOM) {
-                const rootElement = document.getElementById('root');
-                if (rootElement) {
-                    const root = ReactDOM.createRoot(rootElement);
-                    root.render(React.createElement(window.App));
-                    addLog('Pronto!');
-                    setTimeout(() => {
-                        const loader = document.getElementById('initial-loader');
-                        if (loader) loader.style.display = 'none';
-                        document.body.style.overflow = 'auto';
-                    }, 800);
+        function mountApp() {
+            if (window.AppMounted) return;
+            addLog('Montando App...');
+            try {
+                if (window.App && window.ReactDOM && window.React) {
+                    var rootElement = document.getElementById('root');
+                    if (rootElement) {
+                        var root = ReactDOM.createRoot(rootElement);
+                        root.render(React.createElement(window.App));
+                        window.AppMounted = true;
+                        addLog('Pronto!');
+                        setTimeout(function() {
+                            var loader = document.getElementById('initial-loader');
+                            if (loader) loader.style.display = 'none';
+                            document.body.style.overflow = 'auto';
+                        }, 1000);
+                    } else {
+                        showError('Elemento #root ausente');
+                    }
                 } else {
-                    showError('Elemento #root ausente');
+                    var missing = [];
+                    if (!window.React) missing.push('React');
+                    if (!window.ReactDOM) missing.push('ReactDOM');
+                    if (!window.App) missing.push('App');
+                    showError('Faltando: ' + missing.join(', '));
                 }
-            } else {
-                let missing = [];
-                if (!window.React) missing.push('React');
-                if (!window.ReactDOM) missing.push('ReactDOM');
-                if (!window.App) missing.push('App (lógica do sistema)');
-                showError('Componentes faltando: ' + missing.join(', '));
+            } catch (err) {
+                showError('Erro: ' + err.message);
             }
-        } catch (err) {
-            showError(err.message);
         }
 
+        if (document.readyState === 'complete') mountApp();
+        else window.addEventListener('load', mountApp);
+
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js').then(r => addLog('PWA OK')).catch(e => console.warn('PWA Fail:', e));
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('sw.js').then(function() { addLog('PWA OK'); }).catch(function(e) { console.warn('PWA Error:', e); });
             });
         }
     </script>
