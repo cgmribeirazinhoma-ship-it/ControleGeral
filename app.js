@@ -75,7 +75,7 @@
 */
 
 // ─── React hooks — extraídos do UMD global para uso sem prefixo ───────────────
-const { useState, useEffect, useCallback, useMemo, useRef } = React;
+var useState = function() { return React.useState.apply(React, arguments); }; var useEffect = function() { return React.useEffect.apply(React, arguments); }; var useCallback = function() { return React.useCallback.apply(React, arguments); }; var useMemo = function() { return React.useMemo.apply(React, arguments); }; var useRef = function() { return React.useRef.apply(React, arguments); };
 // SheetJS (Excel) — carregado via CDN como window.XLSX (não redeclarar aqui)
 // XLSX está disponível como variável global via CDN no index.html
 
@@ -84,20 +84,20 @@ const { useState, useEffect, useCallback, useMemo, useRef } = React;
 // ─── Gráficos nativos SVG/CSS — sem dependência externa ──────────────────────
 
 // ─── SQL.js loader ────────────────────────────────────────────────────────────
-let _sqlJs = null;
+var _sqlJs = null;
 async function loadSqlJs() {
   if (_sqlJs) return _sqlJs;
   return new Promise(res => {
-    const s = document.createElement("script");
+    var s = document.createElement("script");
     s.src = "https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js";
     s.onload = async () => {
       try {
-        const SQL = await window.initSqlJs({
+        var SQL = await window.initSqlJs({
           locateFile: f => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/${f}`
         });
         _sqlJs = SQL;
         res(SQL);
-      } catch {
+      } catch(e){
         res(null);
       }
     };
@@ -123,12 +123,12 @@ async function loadSqlJs() {
 //
 //  4. Preencha SUPABASE_URL e SUPABASE_ANON_KEY abaixo com os valores do seu projeto.
 //
-const SUPABASE_URL = "https://jifuyprnrrmpbmitmzlx.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_x-jrFjthVTsco6rwP5VxbA_wMPaUPoO";
+var SUPABASE_URL = "https://jifuyprnrrmpbmitmzlx.supabase.co";
+var SUPABASE_ANON_KEY = "sb_publishable_x-jrFjthVTsco6rwP5VxbA_wMPaUPoO";
 
 // _sbLive: true = conexão Supabase verificada e funcionando
-let _sbLive = false;
-const _sbReady = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
+var _sbLive = false;
+var _sbReady = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
 
 // Cabeçalhos padrão para todas as chamadas
 function _sbHeaders(extra = {}) {
@@ -144,13 +144,13 @@ function _sbHeaders(extra = {}) {
 async function _sbTestConnection() {
   if (!_sbReady) return false;
   try {
-    const res = await fetch(
+    var res = await fetch(
       `${SUPABASE_URL}/rest/v1/cgel_store?select=chave&limit=1`,
       { headers: _sbHeaders() }
     );
     _sbLive = res.ok;
     return _sbLive;
-  } catch {
+  } catch(e){
     _sbLive = false;
     return false;
   }
@@ -159,10 +159,10 @@ async function _sbTestConnection() {
 _sbTestConnection();
 
 // [M-P1] AbortController: timeout de 8s em toda chamada Supabase
-const _SB_TIMEOUT = 8000;
+var _SB_TIMEOUT = 8000;
 function _sbFetchWithTimeout(url, opts) {
-  const ctrl = new AbortController();
-  const tid = setTimeout(() => ctrl.abort(), _SB_TIMEOUT);
+  var ctrl = new AbortController();
+  var tid = setTimeout(() => ctrl.abort(), _SB_TIMEOUT);
   return fetch(url, { ...opts, signal: ctrl.signal })
     .finally(() => clearTimeout(tid));
 }
@@ -171,16 +171,16 @@ async function _sbFetch(method, chave, valor) {
   if (!_sbReady) return null;
   try {
     if (method === "GET") {
-      const res = await _sbFetchWithTimeout(
+      var res = await _sbFetchWithTimeout(
         `${SUPABASE_URL}/rest/v1/cgel_store?chave=eq.${encodeURIComponent(chave)}&select=valor`,
         { headers: _sbHeaders() }
       );
       if (!res.ok) return null;
-      const data = await res.json();
+      var data = await res.json();
       return data.length ? data[0].valor : null;
     }
     if (method === "POST") {
-      const res = await _sbFetchWithTimeout(`${SUPABASE_URL}/rest/v1/cgel_store`, {
+      var res = await _sbFetchWithTimeout(`${SUPABASE_URL}/rest/v1/cgel_store`, {
         method: "POST",
         headers: _sbHeaders({ "Prefer": "resolution=merge-duplicates,return=minimal" }),
         body: JSON.stringify({ chave, valor, atualizado_em: new Date().toISOString() })
@@ -189,14 +189,14 @@ async function _sbFetch(method, chave, valor) {
       return res.ok;
     }
     if (method === "DELETE") {
-      const res = await _sbFetchWithTimeout(
+      var res = await _sbFetchWithTimeout(
         `${SUPABASE_URL}/rest/v1/cgel_store?chave=eq.${encodeURIComponent(chave)}`,
         { method: "DELETE", headers: _sbHeaders() }
       );
       return res.ok;
     }
     if (method === "LIST") {
-      const res = await _sbFetchWithTimeout(
+      var res = await _sbFetchWithTimeout(
         `${SUPABASE_URL}/rest/v1/cgel_store?chave=like.${encodeURIComponent(chave)}*&select=chave,valor&order=atualizado_em.asc&limit=10000`,
         { headers: _sbHeaders() }
       );
@@ -206,7 +206,7 @@ async function _sbFetch(method, chave, valor) {
     }
     // [v4.0] HIST_LIST — tabela separada cgel_historico (migration path)
     if (method === "HIST_LIST") {
-      const res = await _sbFetchWithTimeout(
+      var res = await _sbFetchWithTimeout(
         `${SUPABASE_URL}/rest/v1/cgel_historico?select=*&order=num_processo.asc&limit=10000`,
         { headers: _sbHeaders() }
       );
@@ -214,57 +214,57 @@ async function _sbFetch(method, chave, valor) {
       return await res.json();
     }
     if (method === "HIST_POST") {
-      const res = await _sbFetchWithTimeout(`${SUPABASE_URL}/rest/v1/cgel_historico`, {
+      var res = await _sbFetchWithTimeout(`${SUPABASE_URL}/rest/v1/cgel_historico`, {
         method: "POST",
         headers: _sbHeaders({ "Prefer": "resolution=merge-duplicates,return=minimal" }),
         body: JSON.stringify(valor),
       });
       return res.ok;
     }
-  } catch { return null; }
+  } catch(e){ return null; }
 }
 
-const MEM = {};
-const ST = {
+var MEM = {};
+var ST = {
   async get(k) {
     if (_sbReady) {
       try {
-        const raw = await _sbFetch("GET", k);
+        var raw = await _sbFetch("GET", k);
         if (raw !== null) {
-          try { localStorage.setItem("cgel_" + k, raw); } catch {}
+          try { localStorage.setItem("cgel_" + k, raw); } catch(e){}
           return JSON.parse(raw);
         }
-      } catch {}
+      } catch(e){}
     }
     try {
-      const raw = localStorage.getItem("cgel_" + k);
+      var raw = localStorage.getItem("cgel_" + k);
       if (raw !== null) return JSON.parse(raw);
-    } catch {}
-    return MEM[k] ?? null;
+    } catch(e){}
+    return MEM[k] || null;
   },
 
   // Retorna { ok: bool, cloud: bool } — permite saber se salvou na nuvem
   async set(k, v) {
     MEM[k] = v;
-    const serialized = JSON.stringify(v);
-    let cloud = false;
+    var serialized = JSON.stringify(v);
+    var cloud = false;
     if (_sbReady) {
       try {
-        const result = await _sbFetch("POST", k, serialized);
+        var result = await _sbFetch("POST", k, serialized);
         cloud = result === true;
         if (cloud) _sbLive = true;
-      } catch {}
+      } catch(e){}
     }
     try {
       localStorage.setItem("cgel_" + k, serialized);
-    } catch {}
+    } catch(e){}
     return { ok: true, cloud };
   },
 
   async del(k) {
     delete MEM[k];
-    if (_sbReady) { try { await _sbFetch("DELETE", k); } catch {} }
-    try { localStorage.removeItem("cgel_" + k); } catch {}
+    if (_sbReady) { try { await _sbFetch("DELETE", k); } catch(e){} }
+    try { localStorage.removeItem("cgel_" + k); } catch(e){}
     return true;
   },
 
@@ -272,43 +272,43 @@ const ST = {
   async list(prefix) {
     if (_sbReady) {
       try {
-        const rows = await _sbFetch("LIST", prefix);
+        var rows = await _sbFetch("LIST", prefix);
         if (rows !== null) {
           // Atualiza cache local com todos os registros recebidos
           rows.forEach(r => {
-            try { localStorage.setItem("cgel_" + r.chave, r.valor); } catch {}
+            try { localStorage.setItem("cgel_" + r.chave, r.valor); } catch(e){}
           });
           return rows
             .filter(r => r.valor)
             .map(r => {
               try { return { key: r.chave, value: JSON.parse(r.valor) }; }
-              catch { return null; }
+              catch(e){ return null; }
             })
             .filter(Boolean);
         }
-      } catch {}
+      } catch(e){}
     }
     // Fallback offline: lê localStorage deste navegador
     try {
-      const results = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i);
+      var results = [];
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
         if (k && k.startsWith("cgel_" + prefix)) {
-          const raw = localStorage.getItem(k);
+          var raw = localStorage.getItem(k);
           if (raw) {
-            try { results.push({ key: k.slice(5), value: JSON.parse(raw) }); } catch {}
+            try { results.push({ key: k.slice(5), value: JSON.parse(raw) }); } catch(e){}
           }
         }
       }
       if (results.length) return results;
-    } catch {}
+    } catch(e){}
     return Object.entries(MEM)
       .filter(([k]) => k.startsWith(prefix))
       .map(([k, v]) => ({ key: k, value: v }));
   },
 
   async del_prefix(prefix) {
-    const rows = await this.list(prefix);
+    var rows = await this.list(prefix);
     await Promise.all(rows.map(r => this.del(r.key)));
   }
 };
@@ -318,17 +318,17 @@ const ST = {
 // loadAllProcessos — mescla blob "processos" (Excel import) + chaves "proc_NUM"
 // (gravação individual). proc_ tem prioridade (dados mais frescos).
 async function loadAllProcessos() {
-  const [atomRows, blobArr] = await Promise.all([
+  var [atomRows, blobArr] = await Promise.all([
     ST.list("proc_"),
     ST.get("processos")
   ]);
 
-  const map = new Map();
+  var map = new Map();
 
   // 1. Blob legado (importação Excel) — menor prioridade
   if (Array.isArray(blobArr)) {
     blobArr.forEach(p => {
-      const k = String(p["NÚMERO DO DOCUMENTO"] || "").trim();
+      var k = String(p["NÚMERO DO DOCUMENTO"] || "").trim();
       if (k) map.set(k, p);
     });
   }
@@ -337,14 +337,14 @@ async function loadAllProcessos() {
   if (atomRows && atomRows.length > 0) {
     atomRows.forEach(r => {
       if (!r.value) return;
-      const k = String(r.value["NÚMERO DO DOCUMENTO"] || "").trim();
+      var k = String(r.value["NÚMERO DO DOCUMENTO"] || "").trim();
       if (k) map.set(k, r.value);
     });
   }
 
   return [...map.values()].sort((a, b) => {
-    const na = parseInt(String(a["NÚMERO DO DOCUMENTO"] || "0"), 10);
-    const nb = parseInt(String(b["NÚMERO DO DOCUMENTO"] || "0"), 10);
+    var na = parseInt(String(a["NÚMERO DO DOCUMENTO"] || "0"), 10);
+    var nb = parseInt(String(b["NÚMERO DO DOCUMENTO"] || "0"), 10);
     return na - nb;
   });
 }
@@ -357,28 +357,28 @@ async function loadAllProcessos() {
 //   2. Blob legado "historico" (sobrepõe com info de Decisão já salva)
 //   3. Chaves atômicas "hist_NUM" (dados mais frescos, gravados por qualquer usuário)
 async function loadAllHistorico() {
-  const [atomProcs, procBlob, atomHist, histBlob] = await Promise.all([
+  var [atomProcs, procBlob, atomHist, histBlob] = await Promise.all([
     ST.list("proc_"),
     ST.get("processos"),
     ST.list("hist_"),
     ST.get("historico")
   ]);
 
-  const map = new Map();
+  var map = new Map();
 
   // Auxiliar: converte um registro de processo em linha de histórico
-  const procToHist = p => {
-    const tipoKey = p["_tipoKey"] || "";
-    const dec = p["_decisao"]; // só "deferir"/"indeferir" quando explicitamente salvo
+  var procToHist = p => {
+    var tipoKey = p["_tipoKey"] || "";
+    var dec = p["_decisao"]; // só "deferir"/"indeferir" quando explicitamente salvo
     // Data sempre por extenso
-    const dataExt = dtExt(formatData(p["DATA"] || ""));
+    var dataExt = dtExt(formatData(p["DATA"] || ""));
     return {
       "Processo":            p["NÚMERO DO DOCUMENTO"] || "",
       "Data":                dataExt,
       "Órgão":               p["ORGÃO"] || "",
       "Fornecedor":          p["FORNECEDOR"] || "",
       "Valor":               p["VALOR"] || "",
-      "Tipo":                tipoKey ? (TINFO[tipoKey]?.label || tipoKey) : "",
+      "Tipo":                tipoKey ? (TINFO[tipoKey].label || tipoKey) : "",
       "TipoKey":             tipoKey,
       // Vazio = ainda não processado (renderizado como PENDENTE, nunca como INDEFERIDO)
       "Decisão":             dec === "deferir" ? "DEFERIDO" : dec === "indeferir" ? "INDEFERIDO" : "",
@@ -407,7 +407,7 @@ async function loadAllHistorico() {
   // 1a. Blob "processos" (importação Excel)
   if (Array.isArray(procBlob)) {
     procBlob.forEach(p => {
-      const k = String(p["NÚMERO DO DOCUMENTO"] || "").trim();
+      var k = String(p["NÚMERO DO DOCUMENTO"] || "").trim();
       if (k) map.set(k, procToHist(p));
     });
   }
@@ -415,7 +415,7 @@ async function loadAllHistorico() {
   if (atomProcs && atomProcs.length) {
     atomProcs.forEach(r => {
       if (!r.value) return;
-      const k = String(r.value["NÚMERO DO DOCUMENTO"] || "").trim();
+      var k = String(r.value["NÚMERO DO DOCUMENTO"] || "").trim();
       if (k) map.set(k, procToHist(r.value));
     });
   }
@@ -423,7 +423,7 @@ async function loadAllHistorico() {
   // ── 2. Blob legado "historico" — sobrepõe dados de Decisão/Tipo ──────────
   if (Array.isArray(histBlob)) {
     histBlob.forEach(h => {
-      const k = String(h["Processo"] || h["NÚMERO DO DOCUMENTO"] || "").trim();
+      var k = String(h["Processo"] || h["NÚMERO DO DOCUMENTO"] || "").trim();
       if (!k) return;
       map.set(k, { ...(map.get(k) || {}), ...h });
     });
@@ -433,7 +433,7 @@ async function loadAllHistorico() {
   if (atomHist && atomHist.length) {
     atomHist.forEach(r => {
       if (!r.value) return;
-      const k = String(r.value["Processo"] || r.value["NÚMERO DO DOCUMENTO"] || "").trim();
+      var k = String(r.value["Processo"] || r.value["NÚMERO DO DOCUMENTO"] || "").trim();
       if (!k) return;
       map.set(k, { ...(map.get(k) || {}), ...r.value });
     });
@@ -441,15 +441,15 @@ async function loadAllHistorico() {
 
   // Ordena: mais recente (maior número) primeiro
   return [...map.values()].sort((a, b) => {
-    const na = parseInt(String(a["Processo"] || "0"), 10);
-    const nb = parseInt(String(b["Processo"] || "0"), 10);
+    var na = parseInt(String(a["Processo"] || "0"), 10);
+    var nb = parseInt(String(b["Processo"] || "0"), 10);
     return nb - na;
   });
 }
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
-const MESES = ["", "janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
-const CHK = {
+var MESES = ["", "janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+var CHK = {
   padrao: ["Validação do Documento Fiscal", "Emissão e Autenticação das Certidões Negativas", "Conformidade com o processo Licitatório", "Disponibilidade de Saldos Licitatórios", "Outros: Contratos, Valores, Impostos", "Extrato do Contrato"],
   eng: ["Validação do Documento Fiscal", "Emissão e Autenticação das Certidões Negativas", "Conformidade com o processo Licitatório", "Disponibilidade de Saldos Licitatórios", "Solicitação de pagamento com medição", "Planilha de medição assinada", "Relatório fotográfico", "Cópia Do Contrato", "ART ou RRT"],
   tdf: ["Ofício", "Formulário TFD", "Conformidade com o processo Licitatório", "Laudo Médico", "Documentos pessoais"],
@@ -464,7 +464,7 @@ const CHK = {
     "Certidões pessoa física ou jurídica"
   ]
 };
-const TINFO = {
+var TINFO = {
   padrao: {
     label: "Anexo II",
     icon: "📄",
@@ -492,7 +492,7 @@ const TINFO = {
     cor: "#be185d"
   }
 };
-const COL_CANON = {
+var COL_CANON = {
   // Órgão / Secretaria
   "ORGAO": "ORGÃO",
   "SECRETARIA ORGAO": "ORGÃO",
@@ -613,10 +613,10 @@ const COL_CANON = {
   "DATA ATESTE": "DATA",
   "DATA DO ATESTE": "DATA"
 };
-const FOOTER_TXT = "RUA IMPERATRIZ II, Nº 800, CENTRO - GOV. EDISON LOBÃO/MA  |  CEP: 65.928-000";
+var FOOTER_TXT = "RUA IMPERATRIZ II, Nº 800, CENTRO - GOV. EDISON LOBÃO/MA  |  CEP: 65.928-000";
 
 // ── Cores municipais: Ouro #EFD103 | Verde #006000 | Azul #0040E0 ──
-const MUN = {
+var MUN = {
   gold: "#EFD103",
   goldDk: "#b89d00",
   goldXdk: "#7a6500",
@@ -628,7 +628,7 @@ const MUN = {
   blueDk: "#002da0",
   blueXdk: "#001560"
 };
-const T = {
+var T = {
   // Modo claro: fundo creme-esverdeado suave
   appBg: "#f2f4f7",
   cardBg: "#ffffff",
@@ -647,8 +647,8 @@ const T = {
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-const normCol = c => {
-  let s = String(c).trim().toUpperCase();
+var normCol = c => {
+  var s = String(c).trim().toUpperCase();
   s = s.replace(/\xa0/g, " ").replace(/\n|\t/g, " ");
   // Antes de NFD: substituir "Nº" (com ordinal masculino U+00BA) por marcador
   s = s.replace(/N\u00ba/gi, "Nº"); // preservar Nº exato
@@ -656,15 +656,15 @@ const normCol = c => {
   s = s.replace(/\s+/g, " ").trim();
   return s;
 };
-const canonCol = raw => {
-  const n = normCol(raw);
+var canonCol = raw => {
+  var n = normCol(raw);
   // Busca exata primeiro
   if (COL_CANON[n]) return COL_CANON[n];
   // Busca pelo valor "Nº" literal (a chave especial)
   if (raw.trim() === "N\u00ba" || raw.trim() === "N°") return "N\u00ba";
   // Busca case-insensitive nas keys (fallback)
-  const nl = n.toLowerCase();
-  for (const k of Object.keys(COL_CANON)) {
+  var nl = n.toLowerCase();
+  for (var k of Object.keys(COL_CANON)) {
     if (k.toLowerCase() === nl) return COL_CANON[k];
   }
   return raw;
@@ -673,23 +673,23 @@ function formatValor(raw) {
   if (!raw) return "";
   raw = String(raw).trim().replace(/^[Rr]\$\s*/, "");
   if (raw.includes(",")) {
-    const [int_, dec_] = raw.replace(/\./g, "").split(",");
-    const cents = (dec_ || "").slice(0, 2).padEnd(2, "0");
-    const num = parseInt(int_.replace(/\D/g, "") || "0", 10);
+    var [int_, dec_] = raw.replace(/\./g, "").split(",");
+    var cents = (dec_ || "").slice(0, 2).padEnd(2, "0");
+    var num = parseInt(int_.replace(/\D/g, "") || "0", 10);
     return `${num.toLocaleString("pt-BR")},${cents}`;
   }
-  const d = raw.replace(/\D/g, "");
+  var d = raw.replace(/\D/g, "");
   if (!d) return "";
   if (d.length <= 2) return `0,${d.padEnd(2, "0")}`;
   return `${parseInt(d.slice(0, -2), 10).toLocaleString("pt-BR")},${d.slice(-2)}`;
 }
 function formatData(raw) {
   if (!raw) return "";
-  const s = String(raw).trim();
+  var s = String(raw).trim();
 
   // yyyy-mm-dd
   if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
-    const [y, m, d] = s.split("T")[0].split("-");
+    var [y, m, d] = s.split("T")[0].split("-");
     return `${d}/${m}/${y}`;
   }
 
@@ -697,46 +697,46 @@ function formatData(raw) {
   if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) return s;
 
   // "31 de agosto de 2023" — formato extenso vindo da planilha
-  const mesesExt = { janeiro:1,fevereiro:2,"março":3,marco:3,abril:4,maio:5,junho:6,
+  var mesesExt = { janeiro:1,fevereiro:2,"março":3,marco:3,abril:4,maio:5,junho:6,
     julho:7,agosto:8,setembro:9,outubro:10,novembro:11,dezembro:12 };
-  const mExt = s.match(/^(\d{1,2})\s+de\s+([\w\u00C0-\u017E]+)\s+de\s+(\d{4})$/i);
+  var mExt = s.match(/^(\d{1,2})\s+de\s+([\w\u00C0-\u017E]+)\s+de\s+(\d{4})$/i);
   if (mExt) {
-    const dia = String(mExt[1]).padStart(2,"0");
-    const mesNum = mesesExt[mExt[2].toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")];
-    const mes = String(mesNum || 1).padStart(2,"0");
+    var dia = String(mExt[1]).padStart(2,"0");
+    var mesNum = mesesExt[mExt[2].toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")];
+    var mes = String(mesNum || 1).padStart(2,"0");
     return `${dia}/${mes}/${mExt[3]}`;
   }
 
   // dd-mm-yyyy ou ddmmyyyy numérico
-  const d = s.replace(/\D/g, "");
+  var d = s.replace(/\D/g, "");
   if (d.length >= 8) return `${d.slice(0,2)}/${d.slice(2,4)}/${d.slice(4,8)}`;
   return s;
 }
 function dtExt(d) {
   if (!d) return "";
   if (d instanceof Date) return `${d.getDate()} de ${MESES[d.getMonth() + 1]} de ${d.getFullYear()}`;
-  const digs = String(d).replace(/\D/g, "");
+  var digs = String(d).replace(/\D/g, "");
   if (digs.length >= 8) return `${parseInt(digs.slice(0, 2))} de ${MESES[parseInt(digs.slice(2, 4))]} de ${digs.slice(4, 8)}`;
   return String(d);
 }
 function todayISO() {
-  const n = new Date();
+  var n = new Date();
   return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`;
 }
 
 // Converte qualquer formato de data para yyyy-mm-dd (para usar em <input type="date">)
 function toISO(raw) {
   if (!raw) return todayISO();
-  const s = String(raw).trim();
+  var s = String(raw).trim();
   // já é yyyy-mm-dd
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
   // dd/mm/yyyy
   if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
-    const [d, m, y] = s.split("/");
+    var [d, m, y] = s.split("/");
     return `${y}-${m}-${d}`;
   }
   // fallback: retira dígitos
-  const d = s.replace(/\D/g, "");
+  var d = s.replace(/\D/g, "");
   if (d.length >= 8) return `${d.slice(4, 8)}-${d.slice(2, 4)}-${d.slice(0, 2)}`;
   return todayISO();
 }
@@ -757,10 +757,10 @@ function fmtD(raw) {
 function _numsSeguros(processos) {
   return (processos || [])
     .map(p => {
-      const raw = String(p["NÚMERO DO DOCUMENTO"] || "").trim();
+      var raw = String(p["NÚMERO DO DOCUMENTO"] || "").trim();
       // Ignorar fórmulas Excel (=L2+1 etc.) que possam ter escapado da importação
       if (raw.startsWith("=")) return NaN;
-      const n = parseInt(raw, 10);
+      var n = parseInt(raw, 10);
       // Limite razoável: números de processo não chegam a 99999
       return (!isNaN(n) && n > 0 && n < 99999) ? n : NaN;
     })
@@ -768,22 +768,22 @@ function _numsSeguros(processos) {
 }
 
 function proxNumero(processos) {
-  const nums = _numsSeguros(processos);
+  var nums = _numsSeguros(processos);
   if (!nums.length) return 1;
-  const usados = new Set(nums);
-  let next = nums.reduce((a,b) => a > b ? a : b, 0) + 1;
+  var usados = new Set(nums);
+  var next = nums.reduce((a,b) => a > b ? a : b, 0) + 1;
   while (usados.has(next)) next++;
   return next;
 }
 
 // Verifica se um número específico já está em uso
 function numeroDuplicado(num, processos, numOriginalEdicao) {
-  const n = parseInt(String(num).trim(), 10);
+  var n = parseInt(String(num).trim(), 10);
   if (isNaN(n) || n <= 0) return false;
   return processos.some(p => {
-    const raw = String(p["NÚMERO DO DOCUMENTO"] || "").trim();
+    var raw = String(p["NÚMERO DO DOCUMENTO"] || "").trim();
     if (raw.startsWith("=")) return false;
-    const pn = parseInt(raw, 10);
+    var pn = parseInt(raw, 10);
     if (numOriginalEdicao && pn === parseInt(String(numOriginalEdicao).trim(), 10)) return false;
     return pn === n;
   });
@@ -791,15 +791,15 @@ function numeroDuplicado(num, processos, numOriginalEdicao) {
 
 // Calcula o maior número REAL (ignora fórmulas) de um conjunto de processos
 function maiorNumero(processos) {
-  const nums = _numsSeguros(processos);
+  var nums = _numsSeguros(processos);
   return nums.length ? nums.reduce((a,b) => a > b ? a : b, 0) : 0;
 }
 
 // ─── [A1] Máscara CNPJ/CPF ────────────────────────────────────────────────────
 function mascararCnpjCpf(raw) {
-  const d = raw.replace(/\D/g, "");
+  var d = raw.replace(/\D/g, "");
   if (d.length <= 11) {
-    const p1 = d.slice(0, 3),
+    var p1 = d.slice(0, 3),
       p2 = d.slice(3, 6),
       p3 = d.slice(6, 9),
       p4 = d.slice(9, 11);
@@ -808,7 +808,7 @@ function mascararCnpjCpf(raw) {
     if (d.length <= 9) return `${p1}.${p2}.${p3}`;
     return `${p1}.${p2}.${p3}-${p4}`;
   }
-  const p1 = d.slice(0, 2),
+  var p1 = d.slice(0, 2),
     p2 = d.slice(2, 5),
     p3 = d.slice(5, 8),
     p4 = d.slice(8, 12),
@@ -820,7 +820,7 @@ function mascararCnpjCpf(raw) {
   return `${p1}.${p2}.${p3}/${p4}-${p5}`;
 }
 function validarCnpjCpf(raw) {
-  const d = raw.replace(/\D/g, "");
+  var d = raw.replace(/\D/g, "");
   if (d.length === 0) return true;
   if (d.length === 11) return validarCPF(d);
   if (d.length === 14) return validarCNPJ(d);
@@ -828,21 +828,21 @@ function validarCnpjCpf(raw) {
 }
 function validarCPF(d) {
   if (/^(\d)\1{10}$/.test(d)) return false; // todos iguais
-  let s = 0;
-  for (let i = 0; i < 9; i++) s += parseInt(d[i]) * (10 - i);
-  let r = (s * 10) % 11; if (r >= 10) r = 0;
+  var s = 0;
+  for (var i = 0; i < 9; i++) s += parseInt(d[i]) * (10 - i);
+  var r = (s * 10) % 11; if (r >= 10) r = 0;
   if (r !== parseInt(d[9])) return false;
   s = 0;
-  for (let i = 0; i < 10; i++) s += parseInt(d[i]) * (11 - i);
+  for (var i = 0; i < 10; i++) s += parseInt(d[i]) * (11 - i);
   r = (s * 10) % 11; if (r >= 10) r = 0;
   return r === parseInt(d[10]);
 }
 function validarCNPJ(d) {
   if (/^(\d)\1{13}$/.test(d)) return false; // todos iguais
-  const calc = (n) => {
-    let s = 0, p = n - 7;
-    for (let i = 0; i < n; i++) { s += parseInt(d[i]) * p--; if (p < 2) p = 9; }
-    const r = s % 11;
+  var calc = (n) => {
+    var s = 0, p = n - 7;
+    for (var i = 0; i < n; i++) { s += parseInt(d[i]) * p--; if (p < 2) p = 9; }
+    var r = s % 11;
     return r < 2 ? 0 : 11 - r;
   };
   return calc(12) === parseInt(d[12]) && calc(13) === parseInt(d[13]);
@@ -850,7 +850,7 @@ function validarCNPJ(d) {
 
 
 // ─── [J-F4] Status de tramitação ─────────────────────────────────────────────
-const STATUS_MAP = {
+var STATUS_MAP = {
   analise:   { label: "Em análise",              cor: "#d97706", emoji: "🟡" },
   aguardando:{ label: "Aguardando complementação",cor: "#7c3aed", emoji: "🟣" },
   aprovado:  { label: "Aprovado p/ pagamento",   cor: "#16a34a", emoji: "🟢" },
@@ -860,49 +860,49 @@ const STATUS_MAP = {
 
 // ─── MapData ──────────────────────────────────────────────────────────────────
 // [M-P2] Cache: só recalcula quando o array de processos realmente muda
-let _mapDataCache = null;
-let _mapDataKey = null;
+var _mapDataCache = null;
+var _mapDataKey = null;
 function _mapDataHash(processos) {
   if (!processos.length) return "0:";
-  const last = processos[processos.length - 1];
+  var last = processos[processos.length - 1];
   return `${processos.length}:${last["NÚMERO DO DOCUMENTO"] || ""}`;
 }
 function buildMapData(processos) {
-  const key = _mapDataHash(processos);
+  var key = _mapDataHash(processos);
   if (_mapDataKey === key && _mapDataCache) return _mapDataCache;
   _mapDataKey = key;
   _mapDataCache = _buildMapDataInner(processos);
   return _mapDataCache;
 }
 function _buildMapDataInner(processos) {
-  const dct = (kC, vC) => {
-    const m = {};
-    for (const p of processos) {
-      const k = String(p[kC] || "").trim(),
+  var dct = (kC, vC) => {
+    var m = {};
+    for (var p of processos) {
+      var k = String(p[kC] || "").trim(),
         v = String(p[vC] || "").trim();
       if (k && v) m[k] = v;
     }
     return m;
   };
-  const lst = col => {
-    const s = new Set();
-    for (const p of processos) {
-      const v = String(p[col] || "").trim();
+  var lst = col => {
+    var s = new Set();
+    for (var p of processos) {
+      var v = String(p[col] || "").trim();
       if (v) s.add(v);
     }
     return [...s].sort();
   };
-  const multi = (kC, vC) => {
-    const m = {};
-    for (const p of processos) {
-      const k = String(p[kC] || "").trim(),
+  var multi = (kC, vC) => {
+    var m = {};
+    for (var p of processos) {
+      var k = String(p[kC] || "").trim(),
         v = String(p[vC] || "").trim();
       if (!k || !v) continue;
       if (!m[k]) m[k] = new Set();
       m[k].add(v);
     }
-    const out = {};
-    for (const k in m) out[k] = [...m[k]].sort();
+    var out = {};
+    for (var k in m) out[k] = [...m[k]].sort();
     return out;
   };
   return {
@@ -943,24 +943,23 @@ function _buildMapDataInner(processos) {
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 // [FIX1] Versão do schema de usuários — incrementar aqui força recriação do admin
 // se o código de hash mudar entre deploys, evitando login quebrado.
-const USERS_SCHEMA_V = 3;
+var USERS_SCHEMA_V = 3;
 
 async function hashSenha(salt, senha) {
-  const e = new TextEncoder(),
+  var e = new TextEncoder(),
     b = await crypto.subtle.digest("SHA-256", e.encode(salt + senha));
   return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, "0")).join("");
 }
 async function loadUsers() {
-  let u = await ST.get("users");
+  var u = await ST.get("users");
   // Recria admin se: não existe, ou schemaV desatualizado (hash de versão anterior)
   if (!u || u.__schemaV !== USERS_SCHEMA_V) {
-    const salt = crypto.randomUUID().replace(/-/g, "").slice(0, 32);
-    const hash = await hashSenha(salt, "admin123");
+    var salt = _generateUUID().replace(/-/g, "").slice(0, 32);
+    var hash = await hashSenha(salt, "admin123");
     // Preserva outros usuários se existirem, apenas garante admin válido
-    const admExistente = u?.admin;
-    u = {
-      ...(u || {}),
-      admin: admExistente && u.__schemaV === USERS_SCHEMA_V ? admExistente : {
+    var admExistente = (u && u.admin) ? u.admin : null;
+    u = Object.assign({}, u || {}, {
+      admin: admExistente && u && u.__schemaV === USERS_SCHEMA_V ? admExistente : {
         senha: hash,
         salt,
         nome: "Administrador",
@@ -968,13 +967,13 @@ async function loadUsers() {
         ativo: true
       },
       __schemaV: USERS_SCHEMA_V
-    };
+    });
     await ST.set("users", u);
   }
   return u;
 }
 async function checkLogin(login, senha) {
-  const us = await loadUsers(),
+  var us = await loadUsers(),
     u = us[login];
   if (!u || !u.ativo) return null;
   return (await hashSenha(u.salt, senha)) === u.senha ? u : null;
@@ -982,58 +981,58 @@ async function checkLogin(login, senha) {
 
 // ─── Excel ────────────────────────────────────────────────────────────────────
 async function importarExcel(file) {
-  const buf = await file.arrayBuffer();
-  const wb = XLSX.read(buf, { type: "array", cellDates: true, raw: true });
-  const ws = wb.Sheets[wb.SheetNames[0]];
-  const range = XLSX.utils.decode_range(ws["!ref"] || "A1");
+  var buf = await file.arrayBuffer();
+  var wb = XLSX.read(buf, { type: "array", cellDates: true, raw: true });
+  var ws = wb.Sheets[wb.SheetNames[0]];
+  var range = XLSX.utils.decode_range(ws["!ref"] || "A1");
 
   // ── Descobrir índice de cada coluna pelo cabeçalho (linha 1) ──────────────
-  const colIdx = {}; // canonName → índice
-  for (let c = 0; c <= range.e.c; c++) {
-    const cell = ws[XLSX.utils.encode_cell({ r: 0, c })];
+  var colIdx = {}; // canonName → índice
+  for (var c = 0; c <= range.e.c; c++) {
+    var cell = ws[XLSX.utils.encode_cell({ r: 0, c })];
     if (cell && cell.v) colIdx[canonCol(String(cell.v))] = c;
   }
-  const numDocIdx = colIdx["NÚMERO DO DOCUMENTO"];
+  var numDocIdx = colIdx["NÚMERO DO DOCUMENTO"];
 
   // ── Valor da ÚLTIMA LINHA com dado em NÚMERO DO DOCUMENTO ─────────────────
   // Estratégia correta: pegar o valor da última linha preenchida,
   // independente de ser fórmula ou não (o Excel já calculou o valor correto).
   // Isso resolve planilhas com sequências =L2+1 que chegam ao número certo (2591).
-  let lastNum = 0;
+  var lastNum = 0;
   if (numDocIdx !== undefined) {
-    for (let r = 1; r <= range.e.r; r++) {
-      const cell = ws[XLSX.utils.encode_cell({ r, c: numDocIdx })];
+    for (var r = 1; r <= range.e.r; r++) {
+      var cell = ws[XLSX.utils.encode_cell({ r, c: numDocIdx })];
       if (cell && cell.v !== undefined && cell.v !== "") {
-        const n = parseInt(String(cell.v).trim(), 10);
+        var n = parseInt(String(cell.v).trim(), 10);
         if (!isNaN(n) && n > 0 && n < 99999) lastNum = n; // sobrescreve → fica com o último
       }
     }
   }
 
   // ── Ler todas as linhas de dados ──────────────────────────────────────────
-  const rows = [];
-  for (let r = 1; r <= range.e.r; r++) {
-    const row = {};
-    let temDado = false;
-    for (let c = 0; c <= range.e.c; c++) {
-      const hCell = ws[XLSX.utils.encode_cell({ r: 0, c })];
+  var rows = [];
+  for (var r = 1; r <= range.e.r; r++) {
+    var row = {};
+    var temDado = false;
+    for (var c = 0; c <= range.e.c; c++) {
+      var hCell = ws[XLSX.utils.encode_cell({ r: 0, c })];
       if (!hCell || !hCell.v) continue;
-      const colName = canonCol(String(hCell.v));
-      const cell = ws[XLSX.utils.encode_cell({ r, c })];
-      let valor = cell ? cell.v : "";
+      var colName = canonCol(String(hCell.v));
+      var cell = ws[XLSX.utils.encode_cell({ r, c })];
+      var valor = cell ? cell.v : "";
       if (valor === undefined || valor === null) valor = "";
 
       // Datas: converter para dd/mm/yyyy
       if (valor instanceof Date) {
-        const dia = String(valor.getDate()).padStart(2, "0");
-        const mes = String(valor.getMonth() + 1).padStart(2, "0");
-        const ano = valor.getFullYear();
+        var dia = String(valor.getDate()).padStart(2, "0");
+        var mes = String(valor.getMonth() + 1).padStart(2, "0");
+        var ano = valor.getFullYear();
         valor = `${dia}/${mes}/${ano}`;
       }
 
       // NÚMERO DO DOCUMENTO: garantir inteiro
       if (colName === "NÚMERO DO DOCUMENTO") {
-        const n = parseInt(String(valor).trim(), 10);
+        var n = parseInt(String(valor).trim(), 10);
         valor = (!isNaN(n) && n > 0 && n < 99999) ? n : "";
       }
 
@@ -1045,10 +1044,10 @@ async function importarExcel(file) {
     // - Nº <= lastNum (descarta bloco antigo com números maiores que o período vigente)
     //   Ex: planilha tem linhas antigas com Nº 2774-3095 → descartadas (> 2591)
     //       e linhas vigentes com Nº 1-2591 → mantidas (<= 2591)
-    const nd = row["NÚMERO DO DOCUMENTO"];
-    const ndNum = parseInt(String(nd ?? "").trim(), 10);
-    const ehValido = temDado && !isNaN(ndNum) && ndNum > 0;
-    const ehBlocoVigente = lastNum === 0 || ndNum <= lastNum;
+    var nd = row["NÚMERO DO DOCUMENTO"];
+    var ndNum = parseInt(String(nd || "").trim(), 10);
+    var ehValido = temDado && !isNaN(ndNum) && ndNum > 0;
+    var ehBlocoVigente = lastNum === 0 || ndNum <= lastNum;
     if (ehValido && ehBlocoVigente) rows.push(row);
   }
 
@@ -1057,15 +1056,15 @@ async function importarExcel(file) {
   return rows;
 }
 function exportarExcel(processos, historico) {
-  const wb = XLSX.utils.book_new();
+  var wb = XLSX.utils.book_new();
   // Planilha principal — formato compatível com importação (mesmas colunas)
-  const COLS_ORDER = ["OBJETO", "ORGÃO", "MODALIDADE", "CONTRATO", "FORNECEDOR", "NOME FANTASIA", "CNPJ", "DOCUMENTO FISCAL", "Nº", "TIPO", "VALOR", "NÚMERO DO DOCUMENTO", "DATA", "SECRETARIO", "N° ORDEM DE COMPRA", "DATA NF", "PERÍODO DE REFERÊNCIA", "_tipoKey", "_decisao"];
-  const procRows = processos.map(p => {
-    const r = {};
+  var COLS_ORDER = ["OBJETO", "ORGÃO", "MODALIDADE", "CONTRATO", "FORNECEDOR", "NOME FANTASIA", "CNPJ", "DOCUMENTO FISCAL", "Nº", "TIPO", "VALOR", "NÚMERO DO DOCUMENTO", "DATA", "SECRETARIO", "N° ORDEM DE COMPRA", "DATA NF", "PERÍODO DE REFERÊNCIA", "_tipoKey", "_decisao"];
+  var procRows = processos.map(p => {
+    var r = {};
     COLS_ORDER.forEach(c => r[c] = p[c] !== undefined ? p[c] : "");
     return r;
   });
-  const ws1 = XLSX.utils.json_to_sheet(procRows, {
+  var ws1 = XLSX.utils.json_to_sheet(procRows, {
     header: COLS_ORDER
   });
   XLSX.utils.book_append_sheet(wb, ws1, "Planilha1");
@@ -1078,23 +1077,23 @@ function exportarExcel(processos, historico) {
 // ─── [G-I1] Exportação SIAFEM/TCE-MA ─────────────────────────────────────────
 function exportarSIAFEM(processos) {
   // Formato CSV compatível com TCE-MA / SIAFEM
-  const header = [
+  var header = [
     "NR_PROCESSO","DT_PAGAMENTO","CD_ORGAO","SECRETARIA","NR_CNPJ_CPF",
     "NM_CREDOR","VL_PAGAMENTO","DS_OBJETO","NR_CONTRATO","TP_LICITACAO",
     "NR_NF","DT_NF","TP_DECISAO","NR_DOC_FISCAL"
   ];
-  const parseBRL = v => {
-    const s = String(v||"").replace(/\./g,"").replace(",",".");
-    const n = parseFloat(s.replace(/[^\d.]/g,""));
+  var parseBRL = v => {
+    var s = String(v||"").replace(/\./g,"").replace(",",".");
+    var n = parseFloat(s.replace(/[^\d.]/g,""));
     return isNaN(n) ? "0.00" : n.toFixed(2);
   };
-  const fmtData = raw => {
-    const d = String(raw||"").replace(/\D/g,"");
+  var fmtData = raw => {
+    var d = String(raw||"").replace(/\D/g,"");
     if (d.length >= 8) return `${d.slice(4,8)}-${d.slice(2,4)}-${d.slice(0,2)}`;
     return "";
   };
-  const esc = v => `"${String(v||"").replace(/"/g,"'")}"`;
-  const rows = [header.join(";")];
+  var esc = v => `"${String(v||"").replace(/"/g,"'")}"`;
+  var rows = [header.join(";")];
   processos.forEach(p => {
     rows.push([
       esc(p["NÚMERO DO DOCUMENTO"]),
@@ -1113,10 +1112,10 @@ function exportarSIAFEM(processos) {
       esc(p["DOCUMENTO FISCAL"])
     ].join(";"));
   });
-  const csv = rows.join("\n");
-  const blob = new Blob(["\uFEFF"+csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
+  var csv = rows.join("\n");
+  var blob = new Blob(["\uFEFF"+csv], { type: "text/csv;charset=utf-8;" });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
   a.href = url;
   a.download = `SIAFEM_${todayISO()}.csv`;
   document.body.appendChild(a); a.click();
@@ -1126,19 +1125,19 @@ function exportarSIAFEM(processos) {
 
 // ─── [M-P3] Web Worker inline para importação de Excel ───────────────────────
 // Roda em thread separada — não trava a UI com planilhas grandes
-const _EXCEL_WORKER_SRC = `
+var _EXCEL_WORKER_SRC = `
 self.onmessage = async function(e) {
-  const { buffer, sheetJsUrl } = e.data;
+  var { buffer, sheetJsUrl } = e.data;
   try {
     // Importa SheetJS no worker
     importScripts(sheetJsUrl);
-    const XLSX = self.XLSX;
-    const wb = XLSX.read(new Uint8Array(buffer), { type: "array", cellDates: true, raw: true });
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    const range = XLSX.utils.decode_range(ws["!ref"] || "A1");
+    var XLSX = self.XLSX;
+    var wb = XLSX.read(new Uint8Array(buffer), { type: "array", cellDates: true, raw: true });
+    var ws = wb.Sheets[wb.SheetNames[0]];
+    var range = XLSX.utils.decode_range(ws["!ref"] || "A1");
 
     // Descobrir colunas pelo cabeçalho
-    const COL_CANON_WORKER = {
+    var COL_CANON_WORKER = {
       "ORGAO":"ORGÃO","SECRETARIA ORGAO":"ORGÃO","UNIDADE":"ORGÃO","DEPARTAMENTO":"ORGÃO",
       "FORNECEDOR":"FORNECEDOR","EMPRESA":"FORNECEDOR","CREDOR":"FORNECEDOR","NOME":"FORNECEDOR",
       "CNPJ":"CNPJ","CPF":"CNPJ","CNPJ/CPF":"CNPJ","VALOR":"VALOR","VALOR TOTAL":"VALOR",
@@ -1148,62 +1147,62 @@ self.onmessage = async function(e) {
       "PERIODO DE REFERENCIA":"PERÍODO DE REFERÊNCIA","N ORDEM DE COMPRA":"N° ORDEM DE COMPRA",
       "DATA NF":"DATA NF","TIPO":"TIPO","NF":"Nº","NOTA FISCAL":"Nº"
     };
-    const normW = c => {
-      let s = String(c).trim().toUpperCase().replace(/[\u00C0-\u017E]/g, m =>
+    var normW = c => {
+      var s = String(c).trim().toUpperCase().replace(/[\u00C0-\u017E]/g, m =>
         "AAAAACEEEEIIIIDNOOOOOUUUUYBSS"["ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞSS".indexOf(m)] || m
       ).replace(/\s+/g," ").trim();
       return s;
     };
-    const canonW = raw => {
-      const n = normW(raw);
+    var canonW = raw => {
+      var n = normW(raw);
       return COL_CANON_WORKER[n] || raw;
     };
 
-    const colIdx = {};
-    for (let c = 0; c <= range.e.c; c++) {
-      const cell = ws[XLSX.utils.encode_cell({ r: 0, c })];
+    var colIdx = {};
+    for (var c = 0; c <= range.e.c; c++) {
+      var cell = ws[XLSX.utils.encode_cell({ r: 0, c })];
       if (cell && cell.v) colIdx[canonW(String(cell.v))] = c;
     }
-    const numDocIdx = colIdx["NÚMERO DO DOCUMENTO"];
+    var numDocIdx = colIdx["NÚMERO DO DOCUMENTO"];
 
-    let lastNum = 0, total = range.e.r;
+    var lastNum = 0, total = range.e.r;
     if (numDocIdx !== undefined) {
-      for (let r = 1; r <= range.e.r; r++) {
-        const cell = ws[XLSX.utils.encode_cell({ r, c: numDocIdx })];
+      for (var r = 1; r <= range.e.r; r++) {
+        var cell = ws[XLSX.utils.encode_cell({ r, c: numDocIdx })];
         if (cell && cell.v !== undefined && cell.v !== "") {
-          const n = parseInt(String(cell.v).trim(), 10);
+          var n = parseInt(String(cell.v).trim(), 10);
           if (!isNaN(n) && n > 0 && n < 99999) lastNum = n;
         }
         if (r % 200 === 0) self.postMessage({ type: "progress", pct: Math.round(r/total*80) });
       }
     }
 
-    const rows = [];
-    for (let r = 1; r <= range.e.r; r++) {
-      const row = {};
-      let temDado = false;
-      for (let c = 0; c <= range.e.c; c++) {
-        const hCell = ws[XLSX.utils.encode_cell({ r: 0, c })];
+    var rows = [];
+    for (var r = 1; r <= range.e.r; r++) {
+      var row = {};
+      var temDado = false;
+      for (var c = 0; c <= range.e.c; c++) {
+        var hCell = ws[XLSX.utils.encode_cell({ r: 0, c })];
         if (!hCell || !hCell.v) continue;
-        const colName = canonW(String(hCell.v));
-        const cell = ws[XLSX.utils.encode_cell({ r, c })];
-        let valor = cell ? cell.v : "";
+        var colName = canonW(String(hCell.v));
+        var cell = ws[XLSX.utils.encode_cell({ r, c })];
+        var valor = cell ? cell.v : "";
         if (valor === undefined || valor === null) valor = "";
         if (valor instanceof Date) {
           valor = String(valor.getDate()).padStart(2,"0") + "/" +
                   String(valor.getMonth()+1).padStart(2,"0") + "/" + valor.getFullYear();
         }
         if (colName === "NÚMERO DO DOCUMENTO") {
-          const n = parseInt(String(valor).trim(), 10);
+          var n = parseInt(String(valor).trim(), 10);
           valor = (!isNaN(n) && n > 0 && n < 99999) ? n : "";
         }
         if (valor !== "") temDado = true;
         row[colName] = valor;
       }
-      const nd = row["NÚMERO DO DOCUMENTO"];
-      const ndNum = parseInt(String(nd ?? "").trim(), 10);
-      const ehValido = temDado && !isNaN(ndNum) && ndNum > 0;
-      const ehBlocoVigente = lastNum === 0 || ndNum <= lastNum;
+      var nd = row["NÚMERO DO DOCUMENTO"];
+      var ndNum = parseInt(String(nd || "").trim(), 10);
+      var ehValido = temDado && !isNaN(ndNum) && ndNum > 0;
+      var ehBlocoVigente = lastNum === 0 || ndNum <= lastNum;
       if (ehValido && ehBlocoVigente) rows.push(row);
       if (r % 200 === 0) self.postMessage({ type: "progress", pct: 80 + Math.round(r/total*20) });
     }
@@ -1214,10 +1213,10 @@ self.onmessage = async function(e) {
 };
 `;
 
-let _excelWorkerUrl = null;
+var _excelWorkerUrl = null;
 function _getExcelWorkerUrl() {
   if (!_excelWorkerUrl) {
-    const blob = new Blob([_EXCEL_WORKER_SRC], { type: "application/javascript" });
+    var blob = new Blob([_EXCEL_WORKER_SRC], { type: "application/javascript" });
     _excelWorkerUrl = URL.createObjectURL(blob);
   }
   return _excelWorkerUrl;
@@ -1226,11 +1225,11 @@ function _getExcelWorkerUrl() {
 async function importarExcelWorker(file, onProgress) {
   return new Promise((resolve, reject) => {
     try {
-      const worker = new Worker(_getExcelWorkerUrl());
+      var worker = new Worker(_getExcelWorkerUrl());
       worker.onmessage = e => {
         if (e.data.type === "progress" && onProgress) onProgress(e.data.pct);
         else if (e.data.type === "done") {
-          const rows = e.data.rows;
+          var rows = e.data.rows;
           rows._lastNum = e.data.lastNum;
           worker.terminate();
           resolve(rows);
@@ -1256,58 +1255,58 @@ async function importarExcelWorker(file, onProgress) {
 // ─── SQLite reader ────────────────────────────────────────────────────────────
 async function readSqliteDB(file) {
   try {
-    const SQL = await loadSqlJs();
+    var SQL = await loadSqlJs();
     if (!SQL) return {
       error: "sql.js não carregou."
     };
-    const buf = await file.arrayBuffer();
-    const db = new SQL.Database(new Uint8Array(buf));
-    const processos = [],
+    var buf = await file.arrayBuffer();
+    var db = new SQL.Database(new Uint8Array(buf));
+    var processos = [],
       historico = [],
       orgaosConfig = {};
     try {
-      const r = db.exec("SELECT * FROM processos");
+      var r = db.exec("SELECT * FROM processos");
       if (r[0]) {
-        const {
+        var {
           columns,
           values
         } = r[0];
-        for (const row of values) {
-          const o = {};
+        for (var row of values) {
+          var o = {};
           columns.forEach((c, i) => {
-            o[canonCol(c)] = row[i] ?? "";
+            o[canonCol(c)] = row[i] || "";
           });
           processos.push(o);
         }
       }
-    } catch {}
+    } catch(e){}
     try {
-      const r = db.exec("SELECT * FROM historico");
+      var r = db.exec("SELECT * FROM historico");
       if (r[0]) {
-        const {
+        var {
           columns,
           values
         } = r[0];
-        for (const row of values) {
-          const o = {};
+        for (var row of values) {
+          var o = {};
           columns.forEach((c, i) => {
-            o[c] = row[i] ?? "";
+            o[c] = row[i] || "";
           });
           historico.push(o);
         }
       }
-    } catch {}
+    } catch(e){}
     try {
-      const r = db.exec("SELECT * FROM orgaos_config");
+      var r = db.exec("SELECT * FROM orgaos_config");
       if (r[0]) {
-        const {
+        var {
           columns,
           values
         } = r[0];
-        for (const row of values) {
-          const o = {};
+        for (var row of values) {
+          var o = {};
           columns.forEach((c, i) => {
-            o[c] = row[i] ?? "";
+            o[c] = row[i] || "";
           });
           if (o.orgao) orgaosConfig[o.orgao] = {
             secretario: o.secretario || "",
@@ -1315,7 +1314,7 @@ async function readSqliteDB(file) {
           };
         }
       }
-    } catch {}
+    } catch(e){}
     db.close();
     return {
       processos,
@@ -1332,21 +1331,21 @@ async function readSqliteDB(file) {
 // ─── [M6] cleanBrasaoAsync ────────────────────────────────────────────────────
 function cleanBrasaoAsync(src) {
   return new Promise(resolve => {
-    const img = new Image();
+    var img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = () => {
       try {
-        const canvas = document.createElement("canvas");
+        var canvas = document.createElement("canvas");
         canvas.width = img.width;
         canvas.height = img.height;
-        const ctx = canvas.getContext("2d");
+        var ctx = canvas.getContext("2d");
         ctx.drawImage(img, 0, 0);
-        const id = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const px = id.data;
-        for (let i = 0; i < px.length; i += 4) if (px[i] > 220 && px[i + 1] > 220 && px[i + 2] > 220) px[i + 3] = 0;
+        var id = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        var px = id.data;
+        for (var i = 0; i < px.length; i += 4) if (px[i] > 220 && px[i + 1] > 220 && px[i + 2] > 220) px[i + 3] = 0;
         ctx.putImageData(id, 0, 0);
         resolve(canvas.toDataURL("image/png"));
-      } catch {
+      } catch(e){
         resolve(src);
       }
     };
@@ -1356,7 +1355,7 @@ function cleanBrasaoAsync(src) {
 }
 
 // ─── jsPDF loader ─────────────────────────────────────────────────────────────
-let _jspdf = null;
+var _jspdf = null;
 async function loadJsPDF() {
   if (_jspdf) return _jspdf;
   // Tenta usar jsPDF já carregado via CDN no index.html
@@ -1367,7 +1366,7 @@ async function loadJsPDF() {
       res(_jspdf);
       return;
     }
-    const s = document.createElement("script");
+    var s = document.createElement("script");
     s.src = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
     s.onload = () => window.jspdf ? (_jspdf = window.jspdf, res(_jspdf)) : rej(new Error("jsPDF não carregou"));
     s.onerror = () => rej(new Error("Falha ao carregar jsPDF"));
@@ -1376,7 +1375,7 @@ async function loadJsPDF() {
 }
 
 // ─── docx.js loader ───────────────────────────────────────────────────────────
-let _docxLib = null;
+var _docxLib = null;
 // docx.js carregado via CDN no index.html
 async function loadDocxLib() {
   if (_docxLib) return _docxLib;
@@ -1388,7 +1387,7 @@ async function loadDocxLib() {
       res(_docxLib);
       return;
     }
-    const s = document.createElement("script");
+    var s = document.createElement("script");
     s.src = "https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js";
     s.onload = () => window.docx ? (_docxLib = window.docx, res(_docxLib)) : rej(new Error("docx.js não carregou"));
     s.onerror = () => rej(new Error("Falha ao carregar docx.js"));
@@ -1399,41 +1398,41 @@ async function loadDocxLib() {
 
 // ─── [M-AU3/G-R1] Relatório mensal PDF ───────────────────────────────────────
 async function gerarRelatorioPDF(processos, mesAno, appConfig) {
-  const lib = await loadJsPDF();
+  var lib = await loadJsPDF();
   if (!lib) return { error: "jsPDF não disponível." };
-  const { jsPDF } = lib;
-  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-  const W = 210, fv = v => v && String(v).trim() ? String(v).trim() : "—";
+  var { jsPDF } = lib;
+  var doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  var W = 210, fv = v => v && String(v).trim() ? String(v).trim() : "—";
 
   // Filtrar processos do mês
-  const [mes, ano] = mesAno.split("/");
-  const chave = `${ano}-${mes.padStart(2,"0")}`;
-  const filtrados = processos.filter(p => {
-    const raw = String(p["DATA"] || "");
+  var [mes, ano] = mesAno.split("/");
+  var chave = `${ano}-${mes.padStart(2,"0")}`;
+  var filtrados = processos.filter(p => {
+    var raw = String(p["DATA"] || "");
     if (/^\d{2}\/\d{2}\/\d{4}/.test(raw)) return (raw.slice(6,10)+"-"+raw.slice(3,5)) === chave;
     if (/^\d{4}-\d{2}/.test(raw)) return raw.slice(0,7) === chave;
     return false;
   });
 
-  const parseBRL = v => { const s=String(v||"").replace(/\./g,"").replace(",",".").replace(/[^\d.]/g,""); const n=parseFloat(s); return isNaN(n)?0:n; };
-  const fmtBRL = v => v.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+  var parseBRL = v => { var s=String(v||"").replace(/\./g,"").replace(",",".").replace(/[^\d.]/g,""); var n=parseFloat(s); return isNaN(n)?0:n; };
+  var fmtBRL = v => v.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
 
   // Totais por órgão
-  const porOrgao = {};
+  var porOrgao = {};
   filtrados.forEach(p => {
-    const o = p["ORGÃO"] || "Sem órgão";
+    var o = p["ORGÃO"] || "Sem órgão";
     if (!porOrgao[o]) porOrgao[o] = { n: 0, total: 0, def: 0, indef: 0 };
     porOrgao[o].n++;
     porOrgao[o].total += parseBRL(p["VALOR"]);
     if (p["_decisao"] === "deferir") porOrgao[o].def++;
     else if (p["_decisao"] === "indeferir") porOrgao[o].indef++;
   });
-  const totalGeral = filtrados.reduce((a,p) => a + parseBRL(p["VALOR"]), 0);
-  const ctrl = appConfig?.controlador || {};
+  var totalGeral = filtrados.reduce((a,p) => a + parseBRL(p["VALOR"]), 0);
+  var ctrl = appConfig.controlador || {};
 
   // ── Cabeçalho ──
   if (window.BRASAO_B64) {
-    try { doc.addImage(window.BRASAO_B64, "PNG", (W-25)/2, 8, 25, 18); } catch {}
+    try { doc.addImage(window.BRASAO_B64, "PNG", (W-25)/2, 8, 25, 18); } catch(e){}
   }
   doc.setFont("helvetica", "bold"); doc.setFontSize(11);
   doc.text("ESTADO DO MARANHÃO", W/2, 30, { align: "center" });
@@ -1442,12 +1441,12 @@ async function gerarRelatorioPDF(processos, mesAno, appConfig) {
   doc.setLineWidth(0.5); doc.line(19, 43, W-19, 43);
 
   doc.setFontSize(14); doc.setFont("helvetica", "bold");
-  const nomeMes = ["","JANEIRO","FEVEREIRO","MARÇO","ABRIL","MAIO","JUNHO",
+  var nomeMes = ["","JANEIRO","FEVEREIRO","MARÇO","ABRIL","MAIO","JUNHO",
     "JULHO","AGOSTO","SETEMBRO","OUTUBRO","NOVEMBRO","DEZEMBRO"];
   doc.text(`RELATÓRIO MENSAL DE PAGAMENTOS — ${nomeMes[parseInt(mes)] || mes}/${ano}`, W/2, 52, { align: "center" });
 
   // ── Sumário ──
-  let y = 62;
+  var y = 62;
   doc.setFontSize(10); doc.setFont("helvetica", "normal");
   [
     ["Total de processos:", filtrados.length.toString()],
@@ -1474,7 +1473,7 @@ async function gerarRelatorioPDF(processos, mesAno, appConfig) {
   doc.setFont("helvetica","normal"); doc.setFontSize(9);
   Object.entries(porOrgao).sort(([,a],[,b])=>b.total-a.total).forEach(([org, dados]) => {
     if (y > 270) { doc.addPage(); y = 20; }
-    const orgLabel = org.slice(0,55);
+    var orgLabel = org.slice(0,55);
     doc.text(orgLabel, 22, y);
     doc.text(dados.n.toString(), 118, y, { align: "right" });
     doc.text(dados.def.toString(), 138, y, { align: "right" });
@@ -1501,7 +1500,7 @@ async function gerarRelatorioPDF(processos, mesAno, appConfig) {
     doc.text(String(p["NÚMERO DO DOCUMENTO"]||""), 22, y);
     doc.text((p["FORNECEDOR"]||"").slice(0,48), 32, y);
     doc.text(fmtBRL(parseBRL(p["VALOR"])), W-50, y, { align: "right" });
-    const dec = p["_decisao"]==="deferir"?"DEF":p["_decisao"]==="indeferir"?"INDEF":"PEND";
+    var dec = p["_decisao"]==="deferir"?"DEF":p["_decisao"]==="indeferir"?"INDEF":"PEND";
     doc.text(dec, W-20, y, { align: "right" });
     y += 4;
   });
@@ -1509,10 +1508,10 @@ async function gerarRelatorioPDF(processos, mesAno, appConfig) {
   // ── Assinatura ──
   if (y > 250) { doc.addPage(); y = 20; }
   y += 10;
-  const ctrlNome = fv(ctrl.nome) || "Thiago Soares Lima";
-  const ctrlCargo = fv(ctrl.cargo) || "Controlador Geral";
-  const ctrlPortaria = fv(ctrl.portaria) || "";
-  const hoje = new Date();
+  var ctrlNome = fv(ctrl.nome) || "Thiago Soares Lima";
+  var ctrlCargo = fv(ctrl.cargo) || "Controlador Geral";
+  var ctrlPortaria = fv(ctrl.portaria) || "";
+  var hoje = new Date();
   doc.setFont("helvetica","normal"); doc.setFontSize(10);
   doc.text(`Governador Edison Lobão/MA, ${hoje.getDate()} de ${["","janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"][hoje.getMonth()+1]} de ${hoje.getFullYear()}`, W-19, y, { align: "right" });
   y += 16;
@@ -1521,30 +1520,30 @@ async function gerarRelatorioPDF(processos, mesAno, appConfig) {
   if (ctrlPortaria) { y += 5; doc.text(ctrlPortaria, W/2, y, { align: "center" }); }
 
   // ── Rodapé ──
-  const totalPgs = doc.internal.getNumberOfPages();
-  for (let pg = 1; pg <= totalPgs; pg++) {
+  var totalPgs = doc.internal.getNumberOfPages();
+  for (var pg = 1; pg <= totalPgs; pg++) {
     doc.setPage(pg); doc.setFontSize(7); doc.setFont("helvetica","normal"); doc.setTextColor(150,150,150);
     doc.text(FOOTER_TXT, W/2, 291, { align: "center" });
     doc.text(`Pág. ${pg}/${totalPgs}`, W-19, 291, { align: "right" });
     doc.setTextColor(0,0,0);
   }
 
-  const blob = doc.output("blob");
+  var blob = doc.output("blob");
   return { blob, name: `Relatorio_${ano}_${mes.padStart(2,"0")}.pdf` };
 }
 
 // ─── gerarPDF ─────────────────────────────────────────────────────────────────
 async function gerarPDF(d, tipo, deferir, checklist, sits) {
   try {
-    const lib = await loadJsPDF();
+    var lib = await loadJsPDF();
     if (!lib) return {
       error: "jsPDF não disponível."
     };
-    const {
+    var {
       jsPDF
     } = lib;
-    const fv = v => v && String(v).trim() ? String(v).trim() : "";
-    const W = 210,
+    var fv = v => v && String(v).trim() ? String(v).trim() : "";
+    var W = 210,
       H = 297,
       SAFE = H - 13; // margem inferior segura
 
@@ -1564,14 +1563,14 @@ async function gerarPDF(d, tipo, deferir, checklist, sits) {
 
     // ── Cabeçalho (brasão + 3 linhas + linha opcional) ────────────────────────
     function cabecalho(doc, withLine) {
-      const bW = 30.7,
+      var bW = 30.7,
         bH = 22.5,
         bX = (W - bW) / 2,
         bY = 8;
       try {
         doc.addImage(window.BRASAO_B64, "PNG", bX, bY, bW, bH);
       } catch (e) {}
-      let y = bY + bH + 4.5;
+      var y = bY + bH + 4.5;
       doc.setFont("helvetica", "bold");
       doc.setFontSize(11);
       doc.setTextColor(0, 0, 0);
@@ -1608,26 +1607,26 @@ async function gerarPDF(d, tipo, deferir, checklist, sits) {
     }
 
     // ── Dimensões base página 2 ───────────────────────────────────────────────
-    const CAB2_H = 52,
+    var CAB2_H = 52,
       TOP_GAP = 8,
       FOOTER_MARGIN = 13;
-    const AVAIL = H - CAB2_H - TOP_GAP - FOOTER_MARGIN; // ≈ 224mm
+    var AVAIL = H - CAB2_H - TOP_GAP - FOOTER_MARGIN; // ≈ 224mm
 
     // ── Constantes de layout ──────────────────────────────────────────────────
-    const FS0 = 12,
+    var FS0 = 12,
       LH0 = 5.5,
       MIN_ROW0 = 7.5,
       PAD0 = 3.0;
-    const pW = W - 30 - 19; // 161mm
-    const DML = 28.0;
-    const DC = [24.9, 22.6, 24.4, 32.5, 33.1, 34.4];
-    const CK1 = 12.7,
+    var pW = W - 30 - 19; // 161mm
+    var DML = 28.0;
+    var DC = [24.9, 22.6, 24.4, 32.5, 33.1, 34.4];
+    var CK1 = 12.7,
       CK2 = 139.8,
       CK3 = 19.4;
-    const ckX = DML;
+    var ckX = DML;
 
     // ── Pré-calcular tamanho do conteúdo (escala base) ────────────────────────
-    const doc0 = new jsPDF({
+    var doc0 = new jsPDF({
       orientation: "portrait",
       unit: "mm",
       format: "a4"
@@ -1640,17 +1639,17 @@ async function gerarPDF(d, tipo, deferir, checklist, sits) {
     function rH0(text, w) {
       return Math.max(MIN_ROW0, nL(text, w) * LH0 + PAD0);
     }
-    const vw0 = DC[1] + DC[2] + DC[3] + DC[4] + DC[5];
-    const vw1 = DC[2] + DC[3] + DC[4] + DC[5];
+    var vw0 = DC[1] + DC[2] + DC[3] + DC[4] + DC[5];
+    var vw1 = DC[2] + DC[3] + DC[4] + DC[5];
 
     // Soma do conteúdo a escala 1.0
-    const lbParecer = doc0.splitTextToSize("PARECER DE VERIFICAÇÃO E ANÁLISE DOCUMENTAL Nº " + fv(d.processo) + " (LIBERAÇÃO PARA PAGAMENTO)", pW);
-    const lbOrgao = doc0.splitTextToSize("Órgão / Departamento: " + fv(d.orgao), pW);
-    const lbObs = d.obs ? doc0.splitTextToSize(d.obs.trim(), pW) : [];
-    const lbApos = doc0.splitTextToSize("Após análise e verificação da documentação constante no processo de pagamento acima citado, constatamos o seguinte:", pW);
-    const ckRowsH = checklist.map(it => Math.max(MIN_ROW0, nL(it, CK2 - 4) * LH0 + PAD0));
-    const dtH = [rH0(d.objeto, vw0), rH0(d.orgao, vw1), rH0(d.fornecedor, vw1), rH0(d.modalidade, vw1), rH0(d.contrato, vw1), rH0(d.cnpj, vw1), Math.max(MIN_ROW0, nL(d.tipo_doc, DC[2] - 3) * LH0 + PAD0)];
-    let total = 0;
+    var lbParecer = doc0.splitTextToSize("PARECER DE VERIFICAÇÃO E ANÁLISE DOCUMENTAL Nº " + fv(d.processo) + " (LIBERAÇÃO PARA PAGAMENTO)", pW);
+    var lbOrgao = doc0.splitTextToSize("Órgão / Departamento: " + fv(d.orgao), pW);
+    var lbObs = d.obs ? doc0.splitTextToSize(d.obs.trim(), pW) : [];
+    var lbApos = doc0.splitTextToSize("Após análise e verificação da documentação constante no processo de pagamento acima citado, constatamos o seguinte:", pW);
+    var ckRowsH = checklist.map(it => Math.max(MIN_ROW0, nL(it, CK2 - 4) * LH0 + PAD0));
+    var dtH = [rH0(d.objeto, vw0), rH0(d.orgao, vw1), rH0(d.fornecedor, vw1), rH0(d.modalidade, vw1), rH0(d.contrato, vw1), rH0(d.cnpj, vw1), Math.max(MIN_ROW0, nL(d.tipo_doc, DC[2] - 3) * LH0 + PAD0)];
+    var total = 0;
     total += lbParecer.length * 5.8 + 7;
     total += 5.5 + lbOrgao.length * LH0 + 5 + 5.5 + 7;
     total += dtH.reduce((a, b) => a + b, 0) + 6;
@@ -1661,12 +1660,12 @@ async function gerarPDF(d, tipo, deferir, checklist, sits) {
 
     // ── Fator de escala ───────────────────────────────────────────────────────
     // Tenta caber em 1 página, mas se não couber adiciona páginas (nunca corta conteúdo)
-    let scale = total > AVAIL ? Math.max(AVAIL / total, 0.65) : 1.0;
-    const FS = FS0 * scale;
-    const LH = LH0 * scale;
-    const MIN_ROW = MIN_ROW0 * scale;
-    const PAD = PAD0 * scale;
-    const doc = new jsPDF({
+    var scale = total > AVAIL ? Math.max(AVAIL / total, 0.65) : 1.0;
+    var FS = FS0 * scale;
+    var LH = LH0 * scale;
+    var MIN_ROW = MIN_ROW0 * scale;
+    var PAD = PAD0 * scale;
+    var doc = new jsPDF({
       orientation: "portrait",
       unit: "mm",
       format: "a4"
@@ -1679,13 +1678,13 @@ async function gerarPDF(d, tipo, deferir, checklist, sits) {
     function rowH(text, w) {
       return Math.max(MIN_ROW, splitS(text, w).length * LH + PAD);
     }
-    let y = 0; // será definido ao iniciar cada página
+    var y = 0; // será definido ao iniciar cada página
 
     // ═══════════════════════════════════════════════════
     // PÁGINA 1 — CAPA
     // ═══════════════════════════════════════════════════
     y = cabecalho(doc, false) + 14;
-    const CML = 22.4,
+    var CML = 22.4,
       CCW = 165.1,
       CCA = 47.6,
       CCB = 117.5;
@@ -1703,16 +1702,16 @@ async function gerarPDF(d, tipo, deferir, checklist, sits) {
     y += 10;
 
     // Linhas de dados da capa
-    const capaRows = [["Órgão:", fv(d.orgao)], ["Processo:", fv(d.processo)], ["Fornecedor:", fv(d.fornecedor)], ["CNPJ:", fv(d.cnpj)], ["NF/Fatura:", fv(d.nf)], ["Contrato:", fv(d.contrato)], ["Modalidade:", fv(d.modalidade)], ["Período de ref.:", fv(d.periodo_ref)], ["N° Ordem de C.:", fv(d.ordem_compra || "")], ["Data da NF.:", fv(d.data_nf)], ["Secretário(a):", fv(d.secretario)], ["Data do ateste:", fv(d.data_ateste)]];
+    var capaRows = [["Órgão:", fv(d.orgao)], ["Processo:", fv(d.processo)], ["Fornecedor:", fv(d.fornecedor)], ["CNPJ:", fv(d.cnpj)], ["NF/Fatura:", fv(d.nf)], ["Contrato:", fv(d.contrato)], ["Modalidade:", fv(d.modalidade)], ["Período de ref.:", fv(d.periodo_ref)], ["N° Ordem de C.:", fv(d.ordem_compra || "")], ["Data da NF.:", fv(d.data_nf)], ["Secretário(a):", fv(d.secretario)], ["Data do ateste:", fv(d.data_ateste)]];
     doc.setFontSize(14);
-    for (const [lbl, val] of capaRows) {
-      const vL = doc.splitTextToSize(val, CCB - 4);
-      const rH = Math.max(10, vL.length * 6.8 + 3);
+    for (var [lbl, val] of capaRows) {
+      var vL = doc.splitTextToSize(val, CCB - 4);
+      var rH = Math.max(10, vL.length * 6.8 + 3);
       doc.setDrawColor(0, 0, 0);
       doc.setLineWidth(0.35);
       doc.rect(CML, y, CCA, rH, "S");
       doc.rect(CML + CCA, y, CCB, rH, "S");
-      const TY = y + 7;
+      var TY = y + 7;
       doc.setFont("helvetica", "bold");
       doc.text(lbl, CML + 2.5, TY);
       doc.setFont("helvetica", "normal");
@@ -1743,7 +1742,7 @@ async function gerarPDF(d, tipo, deferir, checklist, sits) {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(FS);
     doc.setTextColor(0, 0, 0);
-    const pL = splitS("PARECER DE VERIFICAÇÃO E ANÁLISE DOCUMENTAL Nº " + fv(d.processo) + " (LIBERAÇÃO PARA PAGAMENTO)", pW);
+    var pL = splitS("PARECER DE VERIFICAÇÃO E ANÁLISE DOCUMENTAL Nº " + fv(d.processo) + " (LIBERAÇÃO PARA PAGAMENTO)", pW);
     ensureSpace(doc, pL.length * 5.8 * scale + 7);
     doc.text(pL, 30, y, {
       align: "justify",
@@ -1757,7 +1756,7 @@ async function gerarPDF(d, tipo, deferir, checklist, sits) {
     ensureSpace(doc, LH * 2 + 10);
     doc.text("Ao", 30, y);
     y += LH;
-    const orgL = splitS("Órgão / Departamento: " + fv(d.orgao), pW);
+    var orgL = splitS("Órgão / Departamento: " + fv(d.orgao), pW);
     doc.text(orgL, 30, y);
     y += orgL.length * LH + 5 * scale;
     ensureSpace(doc, LH + 7);
@@ -1768,14 +1767,14 @@ async function gerarPDF(d, tipo, deferir, checklist, sits) {
     doc.setDrawColor(0, 0, 0);
     doc.setLineWidth(0.35);
     function dRow(lbl, val, lW, vW) {
-      const vL = splitS(val, vW - 3);
-      const rH = Math.max(MIN_ROW, vL.length * LH + PAD);
+      var vL = splitS(val, vW - 3);
+      var rH = Math.max(MIN_ROW, vL.length * LH + PAD);
       ensureSpace(doc, rH);
       doc.setDrawColor(0, 0, 0);
       doc.setLineWidth(0.35);
       doc.rect(DML, y, lW, rH, "S");
       doc.rect(DML + lW, y, vW, rH, "S");
-      const TY = y + LH * 0.9;
+      var TY = y + LH * 0.9;
       doc.setFont("helvetica", "bold");
       doc.setFontSize(FS);
       doc.text(lbl, DML + 2.5, TY);
@@ -1794,18 +1793,18 @@ async function gerarPDF(d, tipo, deferir, checklist, sits) {
 
     // Linha Documento Fiscal (5 colunas)
     {
-      const c0 = DC[0] + DC[1],
+      var c0 = DC[0] + DC[1],
         c1 = DC[2],
         c2 = DC[3],
         c3 = DC[4],
         c4 = DC[5];
-      const x0 = DML,
+      var x0 = DML,
         x1 = DML + c0,
         x2 = x1 + c1,
         x3 = x2 + c2,
         x4 = x3 + c3;
-      const dfL = splitS(d.tipo_doc, c1 - 3);
-      const dfH = Math.max(MIN_ROW, dfL.length * LH + PAD);
+      var dfL = splitS(d.tipo_doc, c1 - 3);
+      var dfH = Math.max(MIN_ROW, dfL.length * LH + PAD);
       ensureSpace(doc, dfH);
       doc.setDrawColor(0, 0, 0);
       doc.setLineWidth(0.35);
@@ -1814,7 +1813,7 @@ async function gerarPDF(d, tipo, deferir, checklist, sits) {
       doc.rect(x2, y, c2, dfH, "S");
       doc.rect(x3, y, c3, dfH, "S");
       doc.rect(x4, y, c4, dfH, "S");
-      const mid = y + dfH / 2 + LH * 0.35;
+      var mid = y + dfH / 2 + LH * 0.35;
       doc.setFont("helvetica", "bold");
       doc.setFontSize(FS);
       doc.text("Documento Fiscal", x0 + 2.5, mid);
@@ -1822,26 +1821,26 @@ async function gerarPDF(d, tipo, deferir, checklist, sits) {
       dfL.forEach((l, li) => doc.text(l, x1 + 2.5, mid + (li - Math.floor(dfL.length / 2)) * LH));
       doc.setFont("helvetica", "bold");
       doc.text("Nº ", x2 + 2.5, mid);
-      const nW = doc.getTextWidth("Nº ");
+      var nW = doc.getTextWidth("Nº ");
       doc.setFont("helvetica", "normal");
       if (d.nf) {
-        const t = doc.splitTextToSize(fv(d.nf), c2 - 4 - nW);
+        var t = doc.splitTextToSize(fv(d.nf), c2 - 4 - nW);
         doc.text(t[0], x2 + 2.5 + nW, mid);
       }
       doc.setFont("helvetica", "bold");
       doc.text("Tipo ", x3 + 2.5, mid);
-      const tW = doc.getTextWidth("Tipo ");
+      var tW = doc.getTextWidth("Tipo ");
       doc.setFont("helvetica", "normal");
       if (d.tipo_nf) {
-        const t = doc.splitTextToSize(fv(d.tipo_nf), c3 - 4 - tW);
+        var t = doc.splitTextToSize(fv(d.tipo_nf), c3 - 4 - tW);
         doc.text(t[0], x3 + 2.5 + tW, mid);
       }
       doc.setFont("helvetica", "bold");
       doc.text("R$ ", x4 + 2.5, mid);
-      const rW2 = doc.getTextWidth("R$ ");
+      var rW2 = doc.getTextWidth("R$ ");
       doc.setFont("helvetica", "normal");
       if (d.valor) {
-        const t = doc.splitTextToSize(fv(d.valor), c4 - 4 - rW2);
+        var t = doc.splitTextToSize(fv(d.valor), c4 - 4 - rW2);
         doc.text(t[0], x4 + 2.5 + rW2, mid);
       }
       y += dfH;
@@ -1849,7 +1848,7 @@ async function gerarPDF(d, tipo, deferir, checklist, sits) {
     y += 6 * scale;
 
     // Após análise...
-    const aposL = splitS("Após análise e verificação da documentação constante no processo de pagamento acima citado, constatamos o seguinte:", pW);
+    var aposL = splitS("Após análise e verificação da documentação constante no processo de pagamento acima citado, constatamos o seguinte:", pW);
     ensureSpace(doc, aposL.length * LH + 6 * scale);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(FS);
@@ -1858,7 +1857,7 @@ async function gerarPDF(d, tipo, deferir, checklist, sits) {
     y += aposL.length * LH + 6 * scale;
 
     // ── Checklist ──────────────────────────────────────────────────────────────
-    const ckHH = Math.max(MIN_ROW, LH + PAD);
+    var ckHH = Math.max(MIN_ROW, LH + PAD);
     ensureSpace(doc, ckHH);
     doc.setDrawColor(0, 0, 0);
     doc.setLineWidth(0.35);
@@ -1879,9 +1878,9 @@ async function gerarPDF(d, tipo, deferir, checklist, sits) {
     });
     doc.setFontSize(FS);
     y += ckHH;
-    for (let i = 0; i < checklist.length; i++) {
-      const dL = splitS(checklist[i], CK2 - 4);
-      const rH = Math.max(MIN_ROW, dL.length * LH + PAD);
+    for (var i = 0; i < checklist.length; i++) {
+      var dL = splitS(checklist[i], CK2 - 4);
+      var rH = Math.max(MIN_ROW, dL.length * LH + PAD);
       ensureSpace(doc, rH);
       doc.setDrawColor(0, 0, 0);
       doc.setLineWidth(0.35);
@@ -1891,12 +1890,12 @@ async function gerarPDF(d, tipo, deferir, checklist, sits) {
       doc.setFont("helvetica", "normal");
       doc.setFontSize(FS);
       doc.setTextColor(0, 0, 0);
-      const ckTY = y + LH * 0.9;
+      var ckTY = y + LH * 0.9;
       doc.text(String(i + 1), ckX + CK1 / 2, ckTY, {
         align: "center"
       });
       dL.forEach((l, li) => doc.text(l, ckX + CK1 + 2.5, ckTY + li * LH));
-      const sx = ckX + CK1 + CK2 + CK3 / 2,
+      var sx = ckX + CK1 + CK2 + CK3 / 2,
         sy = y + rH / 2;
       if (sits[i]) tick(doc, sx, sy);else cross(doc, sx, sy);
       y += rH;
@@ -1911,9 +1910,9 @@ async function gerarPDF(d, tipo, deferir, checklist, sits) {
     doc.text("OBSERVAÇÃO:", 30, y);
     y += 6 * scale;
     if (d.obs && d.obs.trim()) {
-      const oL = splitS(d.obs.trim(), pW);
+      var oL = splitS(d.obs.trim(), pW);
       // Garante espaço para cada linha, adicionando página se precisar
-      for (let li = 0; li < oL.length; li++) {
+      for (var li = 0; li < oL.length; li++) {
         ensureSpace(doc, LH + 2);
         doc.setFont("helvetica", "normal");
         doc.setFontSize(FS);
@@ -1927,19 +1926,19 @@ async function gerarPDF(d, tipo, deferir, checklist, sits) {
 
     // ── Assinatura — só vai para nova página se realmente não couber ──────────
     // sigH_min = conteúdo real sem espaço em branco excessivo
-    const sigH_min = LH * 5 + 12 * scale; // 12mm para espaço de assinatura manuscrita
-    const pre_gap = 3 * scale;
+    var sigH_min = LH * 5 + 12 * scale; // 12mm para espaço de assinatura manuscrita
+    var pre_gap = 3 * scale;
     // Só adiciona página se o conteúdo realmente não cabe (com margem de 3mm)
     if (y + pre_gap + sigH_min + 3 * scale > SAFE) {
       doc.addPage();
       y = cabecalho(doc, true) + TOP_GAP;
     }
     y += pre_gap;
-    const ctrl = d.controlador || {};
-    const ctrlNome = fv(ctrl.nome) || "Thiago Soares Lima";
-    const ctrlCargo = fv(ctrl.cargo) || "Controlador Geral";
-    const ctrlPortaria = fv(ctrl.portaria) || "Portaria 002/2025";
-    const decTxt = deferir ? "DEFERIMOS O PAGAMENTO:" : "INDEFERIMOS O PAGAMENTO:";
+    var ctrl = d.controlador || {};
+    var ctrlNome = fv(ctrl.nome) || "Thiago Soares Lima";
+    var ctrlCargo = fv(ctrl.cargo) || "Controlador Geral";
+    var ctrlPortaria = fv(ctrl.portaria) || "Portaria 002/2025";
+    var decTxt = deferir ? "DEFERIMOS O PAGAMENTO:" : "INDEFERIMOS O PAGAMENTO:";
     doc.setFont("helvetica", "normal");
     doc.setFontSize(FS);
     doc.setTextColor(0, 0, 0);
@@ -1964,8 +1963,8 @@ async function gerarPDF(d, tipo, deferir, checklist, sits) {
     });
 
     // ── Rodapé em todas as páginas ─────────────────────────────────────────────
-    const totalPgs = doc.internal.getNumberOfPages();
-    for (let pg = 1; pg <= totalPgs; pg++) {
+    var totalPgs = doc.internal.getNumberOfPages();
+    for (var pg = 1; pg <= totalPgs; pg++) {
       doc.setPage(pg);
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8);
@@ -1974,7 +1973,7 @@ async function gerarPDF(d, tipo, deferir, checklist, sits) {
         align: "center"
       });
     }
-    const blob = doc.output("blob");
+    var blob = doc.output("blob");
     return {
       blob,
       name: "PROCESSO_" + fv(d.processo || "doc") + "_" + tipo.toUpperCase() + ".pdf"
@@ -1988,9 +1987,9 @@ async function gerarPDF(d, tipo, deferir, checklist, sits) {
 
 // ─── gerarWordDoc ─────────────────────────────────────────────────────────────
 async function gerarWordDoc(d, tipo, deferir, checklist, sits) {
-  const lib = await loadDocxLib();
+  var lib = await loadDocxLib();
   if (!lib) throw new Error("docx.js não disponível.");
-  const {
+  var {
     Document,
     Packer,
     Paragraph,
@@ -2001,9 +2000,9 @@ async function gerarWordDoc(d, tipo, deferir, checklist, sits) {
     WidthType,
     AlignmentType
   } = lib;
-  const fv = v => v && String(v).trim() ? String(v).trim() : "—";
-  const dataRows = [["Órgão", fv(d.orgao)], ["Processo", fv(d.processo)], ["Fornecedor", fv(d.fornecedor)], ["CNPJ", fv(d.cnpj)], ["Contrato", fv(d.contrato)], ["Modalidade", fv(d.modalidade)], ["Objeto", fv(d.objeto)], ["Valor", "R$ " + fv(d.valor)], ["Data NF", fv(d.data_nf)], ["Secretário(a)", fv(d.secretario)]];
-  const mkRow = cells => new TableRow({
+  var fv = v => v && String(v).trim() ? String(v).trim() : "—";
+  var dataRows = [["Órgão", fv(d.orgao)], ["Processo", fv(d.processo)], ["Fornecedor", fv(d.fornecedor)], ["CNPJ", fv(d.cnpj)], ["Contrato", fv(d.contrato)], ["Modalidade", fv(d.modalidade)], ["Objeto", fv(d.objeto)], ["Valor", "R$ " + fv(d.valor)], ["Data NF", fv(d.data_nf)], ["Secretário(a)", fv(d.secretario)]];
+  var mkRow = cells => new TableRow({
     children: cells.map(([txt, bold, pct]) => new TableCell({
       width: {
         size: pct,
@@ -2018,8 +2017,8 @@ async function gerarWordDoc(d, tipo, deferir, checklist, sits) {
       })]
     }))
   });
-  const tableRows = dataRows.map(([l, v]) => mkRow([[l, true, 30], [v, false, 70]]));
-  const chkRows = checklist.map((item, i) => new TableRow({
+  var tableRows = dataRows.map(([l, v]) => mkRow([[l, true, 30], [v, false, 70]]));
+  var chkRows = checklist.map((item, i) => new TableRow({
     children: [new TableCell({
       width: {
         size: 8,
@@ -2059,8 +2058,8 @@ async function gerarWordDoc(d, tipo, deferir, checklist, sits) {
       })]
     })]
   }));
-  const dec = deferir ? "Com base na análise realizada, manifestamo-nos pelo DEFERIMENTO do processo." : "Com base na análise realizada, manifestamo-nos pelo INDEFERIMENTO do processo.";
-  const docObj = new Document({
+  var dec = deferir ? "Com base na análise realizada, manifestamo-nos pelo DEFERIMENTO do processo." : "Com base na análise realizada, manifestamo-nos pelo INDEFERIMENTO do processo.";
+  var docObj = new Document({
     sections: [{
       children: [new Paragraph({
         alignment: AlignmentType.CENTER,
@@ -2153,9 +2152,9 @@ async function gerarWordDoc(d, tipo, deferir, checklist, sits) {
       })]
     }]
   });
-  const blob = await Packer.toBlob(docObj);
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
+  var blob = await Packer.toBlob(docObj);
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
   a.href = url;
   a.download = `PROCESSO_${fv(d.processo)}_${tipo.toUpperCase()}.docx`;
   document.body.appendChild(a);
@@ -2167,7 +2166,7 @@ async function gerarWordDoc(d, tipo, deferir, checklist, sits) {
 }
 
 // ─── UI Helpers ───────────────────────────────────────────────────────────────
-const LS = dark => ({
+var LS = dark => ({
   display: "block",
   fontSize: 11,
   fontWeight: 700,
@@ -2176,7 +2175,7 @@ const LS = dark => ({
   textTransform: "uppercase",
   color: dark ? "#4a6494" : "#64748b"
 });
-const IS = dark => ({
+var IS = dark => ({
   width: "100%",
   padding: "8px 12px",
   fontSize: 13,
@@ -2188,8 +2187,8 @@ const IS = dark => ({
   marginBottom: 14,
   transition: "border .15s"
 });
-const BS = (v = "primary", dis = false, dark = false) => {
-  const base = {
+var BS = (v = "primary", dis = false, dark = false) => {
+  var base = {
     display: "flex",
     alignItems: "center",
     gap: 6,
@@ -2204,7 +2203,7 @@ const BS = (v = "primary", dis = false, dark = false) => {
     opacity: dis ? .55 : 1,
     whiteSpace: "nowrap"
   };
-  const vv = {
+  var vv = {
     primary: {
       background: MUN.green,
       color: "#fff",
@@ -2241,7 +2240,7 @@ const BS = (v = "primary", dis = false, dark = false) => {
     ...(vv[v] || vv.primary)
   };
 };
-const BtnIco = ({
+var BtnIco = ({
   emoji
 }) => /*#__PURE__*/React.createElement("span", {
   style: {
@@ -2250,17 +2249,17 @@ const BtnIco = ({
   }
 }, emoji);
 function useDebounce(val, ms) {
-  const [d, setD] = useState(val);
+  var [d, setD] = useState(val);
   useEffect(() => {
-    const t = setTimeout(() => setD(val), ms);
+    var t = setTimeout(() => setD(val), ms);
     return () => clearTimeout(t);
   }, [val, ms]);
   return d;
 }
 function useToast() {
-  const [ts, setTs] = useState([]);
-  const toast = useCallback((msg, type = "success", undoFn = null) => {
-    const id = Date.now() + Math.random();
+  var [ts, setTs] = useState([]);
+  var toast = useCallback((msg, type = "success", undoFn = null) => {
+    var id = Date.now() + Math.random();
     setTs(p => [...p, { id, msg, type, undoFn }]);
     setTimeout(() => setTs(p => p.filter(t => t.id !== id)), undoFn ? 5000 : 4200);
   }, []);
@@ -2273,19 +2272,19 @@ function Toast({
   toasts
 }) {
   if (!toasts.length) return null;
-  const bg = {
+  var bg = {
     success: "#0d2318",
     error: "#450a0a",
     warn: "#451a03",
     info: "#0c1a3a"
   };
-  const bd = {
+  var bd = {
     success: "#16a34a",
     error: "#dc2626",
     warn: "#d97706",
     info: "#2563eb"
   };
-  const cl = {
+  var cl = {
     success: "#86efac",
     error: "#fca5a5",
     warn: "#fcd34d",
@@ -2382,7 +2381,7 @@ function PageHeader({
   dark,
   actions
 }) {
-  const cBg = MUN.green,
+  var cBg = MUN.green,
     bdr = MUN.green;
   return /*#__PURE__*/React.createElement("div", {
     style: {
@@ -2476,10 +2475,10 @@ function SearchSelect({
   required = false,
   placeholder = "Selecione ou digite..."
 }) {
-  const [open, setOpen] = useState(false);
-  const [localVal, setLocalVal] = useState(value || "");
-  const ref = useRef(null);
-  const onChangeRef = useRef(onChange);
+  var [open, setOpen] = useState(false);
+  var [localVal, setLocalVal] = useState(value || "");
+  var ref = useRef(null);
+  var onChangeRef = useRef(onChange);
   useEffect(() => {
     onChangeRef.current = onChange;
   }, [onChange]);
@@ -2487,31 +2486,31 @@ function SearchSelect({
   useEffect(() => {
     setLocalVal(value || "");
   }, [value]);
-  const filtered = useMemo(() => {
-    const q = localVal.trim();
+  var filtered = useMemo(() => {
+    var q = localVal.trim();
     if (!q) return options.slice(0, 80);
     return options.filter(o => o.toLowerCase().includes(q.toLowerCase())).slice(0, 80);
   }, [options, localVal]);
   // Fechar ao clicar fora — sem chamar onChange (usuário já digitou)
   useEffect(() => {
-    const h = e => {
+    var h = e => {
       if (ref.current && !ref.current.contains(e.target)) setOpen(false);
     };
     document.addEventListener("mousedown", h);
     return () => document.removeEventListener("mousedown", h);
   }, []);
-  const choose = v => {
+  var choose = v => {
     onChangeRef.current(v);
     setLocalVal(v);
     setOpen(false);
   };
-  const handleInput = e => {
-    const v = e.target.value;
+  var handleInput = e => {
+    var v = e.target.value;
     setLocalVal(v);
     onChangeRef.current(v);
     setOpen(true);
   };
-  const bdr = dark ? "#1e2d40" : "#e2e8f0";
+  var bdr = dark ? "#1e2d40" : "#e2e8f0";
   return /*#__PURE__*/React.createElement("div", {
     ref: ref,
     style: {
@@ -2623,18 +2622,18 @@ function PeriodoInput({
   dark,
   style
 }) {
-  const [open, setOpen] = useState(false);
-  const [q, setQ] = useState(value || "");
-  const ref = useRef(null);
+  var [open, setOpen] = useState(false);
+  var [q, setQ] = useState(value || "");
+  var ref = useRef(null);
   // [FIX Bug C] Sincronizar estado local quando value muda externamente (ex: ao carregar edição)
   useEffect(() => { setQ(value || ""); }, [value]);
-  const sug = useMemo(() => {
-    const ms = ["JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
-    const now = new Date();
-    const res = [];
-    for (let y = now.getFullYear(); y >= now.getFullYear() - 2; y--) {
-      for (let mi = 11; mi >= 0; mi--) {
-        const s = `${ms[mi]}/${y}`;
+  var sug = useMemo(() => {
+    var ms = ["JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
+    var now = new Date();
+    var res = [];
+    for (var y = now.getFullYear(); y >= now.getFullYear() - 2; y--) {
+      for (var mi = 11; mi >= 0; mi--) {
+        var s = `${ms[mi]}/${y}`;
         if (!q.trim() || s.includes(q.toUpperCase())) res.push(s);
         if (res.length >= 8) break;
       }
@@ -2643,13 +2642,13 @@ function PeriodoInput({
     return res;
   }, [q]);
   useEffect(() => {
-    const h = e => {
+    var h = e => {
       if (ref.current && !ref.current.contains(e.target)) setOpen(false);
     };
     document.addEventListener("mousedown", h);
     return () => document.removeEventListener("mousedown", h);
   }, []);
-  const escolher = v => {
+  var escolher = v => {
     setQ(v);
     onChange(v);
     setOpen(false);
@@ -2708,10 +2707,10 @@ function ShortcutsModal({
   onClose,
   dark
 }) {
-  const bg = dark ? "#004010" : "#fff",
+  var bg = dark ? "#004010" : "#fff",
     bdr = dark ? "#1e2d40" : "#e8ecf4",
     tc = dark ? "#e2e8f0" : "#1e293b";
-  const atalhos = [["Ctrl+S", "Salvar processo"], ["Ctrl+P", "Gerar PDF"], ["Ctrl+L", "Limpar formulário"], ["Ctrl+D", "Duplicar último"], ["?", "Esta janela"], ["Esc", "Fechar dropdown"]];
+  var atalhos = [["Ctrl+S", "Salvar processo"], ["Ctrl+P", "Gerar PDF"], ["Ctrl+L", "Limpar formulário"], ["Ctrl+D", "Duplicar último"], ["?", "Esta janela"], ["Esc", "Fechar dropdown"]];
   return /*#__PURE__*/React.createElement("div", {
     style: {
       position: "fixed",
@@ -2850,7 +2849,7 @@ function Brasao({
   style = {}
 }) {
   // Lê diretamente de window.BRASAO_B64 — brasao.js carrega ANTES (síncrono no index.html)
-  const [src, setSrc] = React.useState(() => window.BRASAO_B64 || null);
+  var [src, setSrc] = React.useState(() => window.BRASAO_B64 || null);
   React.useEffect(() => {
     // Garante atualização caso haja qualquer delay residual
     if (window.BRASAO_B64 && src !== window.BRASAO_B64) {
@@ -2859,8 +2858,8 @@ function Brasao({
     }
     if (!window.BRASAO_B64) {
       // Fallback: tenta por até 3 segundos (30 x 100ms)
-      let tentativas = 0;
-      const t = setInterval(() => {
+      var tentativas = 0;
+      var t = setInterval(() => {
         tentativas++;
         if (window.BRASAO_B64) { setSrc(window.BRASAO_B64); clearInterval(t); }
         else if (tentativas >= 30) clearInterval(t);
@@ -2896,12 +2895,12 @@ function Brasao({
 
 // ─── [FIX9] ConfirmModal — substitui window.confirm em todo o sistema ─────────
 function ConfirmModal({ msg, titulo, onOk, onCancel, dark, tipo = "warn" }) {
-  const cores = {
+  var cores = {
     warn:    { bg: "#854d0e", bd: "#eab308", txt: "#fef08a", ico: "⚠️" },
     danger:  { bg: "#7f1d1d", bd: "#dc2626", txt: "#fca5a5", ico: "🗑️" },
     info:    { bg: "#1e3a5f", bd: "#3b82f6", txt: "#bfdbfe", ico: "ℹ️" }
   };
-  const c = cores[tipo] || cores.warn;
+  var c = cores[tipo] || cores.warn;
   return /*#__PURE__*/React.createElement("div", {
     style: {
       position: "fixed", inset: 0, background: "rgba(0,0,0,.6)",
@@ -2945,8 +2944,8 @@ function ConfirmModal({ msg, titulo, onOk, onCancel, dark, tipo = "warn" }) {
 
 // ─── [FIX3] ModalSenha — substitui window.prompt para redefinir senha ─────────
 function ModalSenha({ login, onOk, onCancel, dark }) {
-  const [senha, setSenha] = React.useState("");
-  const [ver, setVer] = React.useState(false);
+  var [senha, setSenha] = React.useState("");
+  var [ver, setVer] = React.useState(false);
   return /*#__PURE__*/React.createElement("div", {
     style: {
       position: "fixed", inset: 0, background: "rgba(0,0,0,.6)",
@@ -3002,27 +3001,27 @@ function ModalSenha({ login, onOk, onCancel, dark }) {
 function LoginPage({
   onLogin
 }) {
-  const [login, setLogin] = useState("");
-  const [senha, setSenha] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [erro, setErro] = useState("");
+  var [login, setLogin] = useState("");
+  var [senha, setSenha] = useState("");
+  var [loading, setLoading] = useState(false);
+  var [erro, setErro] = useState("");
   // [FIX7] Tentativas persistidas em sessionStorage — resiste a F5
-  const [tent, setTent] = useState(() => {
-    try { return parseInt(sessionStorage.getItem("cgel_login_tent") || "0", 10); } catch { return 0; }
+  var [tent, setTent] = useState(() => {
+    try { return parseInt(sessionStorage.getItem("cgel_login_tent") || "0", 10); } catch(e){ return 0; }
   });
-  const [bloq, setBloq] = useState(() => {
-    try { return sessionStorage.getItem("cgel_login_bloq") === "1"; } catch { return false; }
+  var [bloq, setBloq] = useState(() => {
+    try { return sessionStorage.getItem("cgel_login_bloq") === "1"; } catch(e){ return false; }
   });
-  const [count, setCount] = useState(() => {
+  var [count, setCount] = useState(() => {
     try {
-      const exp = parseInt(sessionStorage.getItem("cgel_login_exp") || "0", 10);
-      const rem = Math.max(0, Math.ceil((exp - Date.now()) / 1000));
+      var exp = parseInt(sessionStorage.getItem("cgel_login_exp") || "0", 10);
+      var rem = Math.max(0, Math.ceil((exp - Date.now()) / 1000));
       return rem;
-    } catch { return 0; }
+    } catch(e){ return 0; }
   });
   useEffect(() => {
     if (!bloq || count <= 0) return;
-    const t = setInterval(() => setCount(c => {
+    var t = setInterval(() => setCount(c => {
       if (c <= 1) {
         clearInterval(t);
         setBloq(false);
@@ -3032,27 +3031,27 @@ function LoginPage({
     }), 1000);
     return () => clearInterval(t);
   }, [bloq, count]);
-  const handle = async () => {
+  var handle = async () => {
     if (bloq) return;
     setLoading(true);
     setErro("");
-    const u = await checkLogin(login.trim(), senha);
+    var u = await checkLogin(login.trim(), senha);
     setLoading(false);
     if (u) {
-      try { sessionStorage.removeItem("cgel_login_tent"); sessionStorage.removeItem("cgel_login_bloq"); sessionStorage.removeItem("cgel_login_exp"); } catch {}
+      try { sessionStorage.removeItem("cgel_login_tent"); sessionStorage.removeItem("cgel_login_bloq"); sessionStorage.removeItem("cgel_login_exp"); } catch(e){}
       onLogin({
         ...u,
         login: login.trim()
       });
     } else {
-      const nt = tent + 1;
+      var nt = tent + 1;
       setTent(nt);
-      try { sessionStorage.setItem("cgel_login_tent", String(nt)); } catch {}
+      try { sessionStorage.setItem("cgel_login_tent", String(nt)); } catch(e){}
       if (nt >= 5) {
-        const exp = Date.now() + 300000;
+        var exp = Date.now() + 300000;
         setBloq(true);
         setCount(300);
-        try { sessionStorage.setItem("cgel_login_bloq", "1"); sessionStorage.setItem("cgel_login_exp", String(exp)); } catch {}
+        try { sessionStorage.setItem("cgel_login_bloq", "1"); sessionStorage.setItem("cgel_login_exp", String(exp)); } catch(e){}
         setErro("Muitas tentativas. Aguarde 5 minutos.");
       } else setErro(`Credenciais inválidas. Tentativa ${nt}/5.`);
     }
@@ -3163,9 +3162,9 @@ function Sidebar({
   pendentesAtrasados = 0,
   onExportExcel
 }) {
-  const isAdmin = user?.perfil === "admin";
-  const isOnline = sbOnline ?? _sbLive;
-  const nav = [{
+  var isAdmin = user.perfil === "admin";
+  var isOnline = sbOnline || _sbLive;
+  var nav = [{
     k: "processos",
     icon: "📄",
     label: "Novo Processo"
@@ -3187,7 +3186,7 @@ function Sidebar({
     label: "Protocolo"
   }];
   // [G-R3] Badge de pendentes atrasados
-  const adm = [{
+  var adm = [{
     k: "usuarios",
     icon: "👥",
     label: "Usuários"
@@ -3200,12 +3199,12 @@ function Sidebar({
     icon: "⚙️",
     label: "Configurações"
   }];
-  const NavItem = ({
+  var NavItem = ({
     k,
     icon,
     label
   }) => {
-    const active = page === k;
+    var active = page === k;
     return /*#__PURE__*/React.createElement("div", {
       onClick: () => setPage(k),
       style: {
@@ -3293,7 +3292,7 @@ function Sidebar({
       textOverflow: "ellipsis",
       whiteSpace: "nowrap"
     }
-  }, user?.nome), /*#__PURE__*/React.createElement("div", {
+  }, user.nome), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 9.5,
       color: MUN.goldDk,
@@ -3302,7 +3301,7 @@ function Sidebar({
       fontWeight: 600,
       marginTop: 2
     }
-  }, user?.perfil)), page === "processos" && /*#__PURE__*/React.createElement("div", {
+  }, user.perfil)), page === "processos" && /*#__PURE__*/React.createElement("div", {
     style: {
       margin: "8px 10px 0",
       padding: "8px 12px",
@@ -3525,9 +3524,9 @@ function NovoProcessoPage({
   user,
   onEditModeChange
 }) {
-  const mp = useMemo(() => buildMapData(processos), [processos]);
-  const orgAtivos = useMemo(() => mp.allOrgaos.filter(o => orgaosConfig[o]?.ativo !== false), [mp, orgaosConfig]);
-  const blankForm = useCallback(() => ({
+  var mp = useMemo(() => buildMapData(processos), [processos]);
+  var orgAtivos = useMemo(() => mp.allOrgaos.filter(o => orgaosConfig[o].ativo !== false), [mp, orgaosConfig]);
+  var blankForm = useCallback(() => ({
     numDoc: String(nextProcessoNumber || proxNumero(processos)),
     dataDoc: todayISO(),
     periodo: "",
@@ -3552,7 +3551,7 @@ function NovoProcessoPage({
     notas: "",
     tipo: "padrao"
   }), [processos, nextProcessoNumber]);
-  const formFromRow = useCallback(row => ({
+  var formFromRow = useCallback(row => ({
     numDoc: String(nextProcessoNumber || proxNumero(processos)),
     dataDoc: todayISO(),
     periodo: row["PERÍODO DE REFERÊNCIA"] || row["PERIODO DE REFERENCIA"] || row["PERIODO"] || "",
@@ -3577,27 +3576,27 @@ function NovoProcessoPage({
     notas: "",
     tipo: "padrao"
   }), [processos, nextProcessoNumber]);
-  const [form, setForm] = useState(blankForm);
-  const [chks, setChks] = useState({});
-  const [tab, setTab] = useState(0);
-  const [editMode, setEditMode] = useState(null);
-  const [modMode, setModMode] = useState("forn");
-  const [contMode, setContMode] = useState("forn");
-  const [objMode, setObjMode] = useState("historico");
-  const [loading, setLoading] = useState(false);
-  const [pdfBlob, setPdfBlob] = useState(null);
-  const [pdfName, setPdfName] = useState("");
-  const [compact, setCompact] = useState(false);
-  const [draftSaved, setDraftSaved] = useState(null);
-  const [cnpjErro, setCnpjErro] = useState("");
-  const [autoFillMsg, setAutoFillMsg] = useState(""); // [J-F3] auto-fill chip
+  var [form, setForm] = useState(blankForm);
+  var [chks, setChks] = useState({});
+  var [tab, setTab] = useState(0);
+  var [editMode, setEditMode] = useState(null);
+  var [modMode, setModMode] = useState("forn");
+  var [contMode, setContMode] = useState("forn");
+  var [objMode, setObjMode] = useState("historico");
+  var [loading, setLoading] = useState(false);
+  var [pdfBlob, setPdfBlob] = useState(null);
+  var [pdfName, setPdfName] = useState("");
+  var [compact, setCompact] = useState(false);
+  var [draftSaved, setDraftSaved] = useState(null);
+  var [cnpjErro, setCnpjErro] = useState("");
+  var [autoFillMsg, setAutoFillMsg] = useState(""); // [J-F3] auto-fill chip
   // [FIX9] Estado do ConfirmModal — substitui window.confirm
-  const [confirmModal, setConfirmModal] = useState(null); // {msg,titulo,tipo,onOk}
+  var [confirmModal, setConfirmModal] = useState(null); // {msg,titulo,tipo,onOk}
   // [M2] Notifica o App quando entra/sai do modo edição → pausa polling
   useEffect(() => {
     if (onEditModeChange) onEditModeChange(!!editMode);
   }, [editMode]);
-  const upd = f => v => setForm(p => ({
+  var upd = f => v => setForm(p => ({
     ...p,
     [f]: v
   }));
@@ -3612,7 +3611,7 @@ function NovoProcessoPage({
   }, [duplicarData]);
   useEffect(() => {
     if (!editarData) return;
-    const row = editarData;
+    var row = editarData;
     setForm({
       numDoc: row["NÚMERO DO DOCUMENTO"] || row["NUMERO DO DOCUMENTO"] || "",
       dataDoc: toISO(row["DATA"]) || todayISO(),
@@ -3640,9 +3639,9 @@ function NovoProcessoPage({
     });
     // [FIX Bug D] Restaurar estado do checklist a partir de _sits salvo
     {
-      const sits = row["_sits"];
-      const tipoKey = row["_tipoKey"] || "padrao";
-      const chkLen = (CHK[tipoKey] || []).length;
+      var sits = row["_sits"];
+      var tipoKey = row["_tipoKey"] || "padrao";
+      var chkLen = (CHK[tipoKey] || []).length;
       if (Array.isArray(sits) && sits.length === chkLen && chkLen > 0) {
         setChks({ [tipoKey]: sits });
       } else {
@@ -3655,11 +3654,11 @@ function NovoProcessoPage({
     if (onEditarConsumed) onEditarConsumed();
   }, [editarData]);
   useEffect(() => {
-    const t = setInterval(async () => {
+    var t = setInterval(async () => {
       if (editMode) return;
       if (form.orgao || form.fornecedor || form.objeto) {
-        const res = await ST.set("draft_form", form).catch(() => ({ ok: true, cloud: false }));
-        const hora = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+        var res = await ST.set("draft_form", form).catch(() => ({ ok: true, cloud: false }));
+        var hora = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
         setDraftSaved({ hora, cloud: res.cloud === true });
       }
     }, 30000);
@@ -3671,22 +3670,22 @@ function NovoProcessoPage({
       if (d && d.orgao !== undefined && (d.orgao || d.fornecedor)) setForm(p => ({ ...p, ...d }));
     });
   }, []);
-  const pct = useMemo(() => {
-    const req = ["numDoc", "orgao", "fornecedor", "cnpj", "valor", "objeto"];
+  var pct = useMemo(() => {
+    var req = ["numDoc", "orgao", "fornecedor", "cnpj", "valor", "objeto"];
     return Math.round(req.filter(k => form[k]).length / req.length * 100);
   }, [form]);
   useEffect(() => onPctChange(pct), [pct, onPctChange]);
-  const handleSalvarRef = useRef(null);
-  const handleGerarPDFRef = useRef(null);
-  const handleLimparRef = useRef(null);
-  const handleDuplicarUltimoRef = useRef(null);
+  var handleSalvarRef = useRef(null);
+  var handleGerarPDFRef = useRef(null);
+  var handleLimparRef = useRef(null);
+  var handleDuplicarUltimoRef = useRef(null);
   useEffect(() => {
-    const h = e => {
+    var h = e => {
       if (e.ctrlKey || e.metaKey) {
-        if (e.key === "s" || e.key === "S") { e.preventDefault(); handleSalvarRef.current?.(); }
-        if (e.key === "p" || e.key === "P") { e.preventDefault(); handleGerarPDFRef.current?.(); }
-        if (e.key === "l" || e.key === "L") { e.preventDefault(); handleLimparRef.current?.(); }
-        if (e.key === "d" || e.key === "D") { e.preventDefault(); handleDuplicarUltimoRef.current?.(); }
+        if (e.key === "s" || e.key === "S") { e.preventDefault(); handleSalvarRef.current && handleSalvarRef.current(); }
+        if (e.key === "p" || e.key === "P") { e.preventDefault(); handleGerarPDFRef.current && handleGerarPDFRef.current(); }
+        if (e.key === "l" || e.key === "L") { e.preventDefault(); handleLimparRef.current && handleLimparRef.current(); }
+        if (e.key === "d" || e.key === "D") { e.preventDefault(); handleDuplicarUltimoRef.current && handleDuplicarUltimoRef.current(); }
       }
       if (e.key === "?" && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
@@ -3696,15 +3695,15 @@ function NovoProcessoPage({
     document.addEventListener("keydown", h);
     return () => document.removeEventListener("keydown", h);
   }, []);
-  const onOrgChange = v => setForm(f => ({
+  var onOrgChange = v => setForm(f => ({
     ...f,
     orgao: v,
     secretario: f.secretario || mp.orgaoSecretario[v] || "",
     contrato: f.contrato || mp.orgaoContrato[v] || "",
     modalidade: f.modalidade || mp.orgaoModalidade[v] || ""
   }));
-  const onFornChange = v => {
-    const hasDados = mp.fornCnpj[v] || mp.fornObjeto[v] || mp.fornContrato[v];
+  var onFornChange = v => {
+    var hasDados = mp.fornCnpj[v] || mp.fornObjeto[v] || mp.fornContrato[v];
     setForm(f => ({
       ...f,
       fornecedor: v,
@@ -3721,17 +3720,17 @@ function NovoProcessoPage({
       setTimeout(() => setAutoFillMsg(""), 4000);
     }
   };
-  const onCnpjChange = v => {
-    const m = mascararCnpjCpf(v);
+  var onCnpjChange = v => {
+    var m = mascararCnpjCpf(v);
     setForm(f => ({
       ...f,
       cnpj: m,
       fornecedor: f.fornecedor || mp.cnpjForn[v] || ""
     }));
-    const valido = validarCnpjCpf(m);
+    var valido = validarCnpjCpf(m);
     setCnpjErro(valido ? "" : "CNPJ/CPF inválido — verifique os dígitos");
     // [M-AU1] Consulta BrasilAPI ao completar CNPJ com 14 dígitos válidos
-    const digits = m.replace(/\D/g, "");
+    var digits = m.replace(/\D/g, "");
     if (digits.length === 14 && valido) {
       fetch(`https://brasilapi.com.br/api/cnpj/v1/${digits}`)
         .then(r => r.ok ? r.json() : null)
@@ -3748,57 +3747,57 @@ function NovoProcessoPage({
         .catch(() => {});
     }
   };
-  const onObjChange = v => setForm(f => ({
+  var onObjChange = v => setForm(f => ({
     ...f,
     objeto: v,
     modalidade: f.modalidade || mp.objModalidade[v] || "",
     contrato: f.contrato || mp.objContrato[v] || ""
   }));
-  const onModalChange = v => setForm(f => ({
+  var onModalChange = v => setForm(f => ({
     ...f,
     modalidade: v,
     contrato: f.contrato || mp.modalContrato[v] || ""
   }));
-  const getChks = t => {
-    const n = CHK[t]?.length || 0;
-    const c = chks[t];
+  var getChks = t => {
+    var n = CHK[t].length || 0;
+    var c = chks[t];
     return c && c.length === n ? c : Array(n).fill(true);
   };
-  const setChk = (t, i, v) => {
-    const arr = [...getChks(t)];
+  var setChk = (t, i, v) => {
+    var arr = [...getChks(t)];
     arr[i] = v;
     setChks(p => ({
       ...p,
       [t]: arr
     }));
   };
-  const mFF = form.fornecedor ? mp.fornModalidadesList[form.fornecedor] || [] : [];
-  const mShow = modMode === "forn" && mFF.length ? mFF : mp.allModalidades;
-  const mFiltered = modMode === "forn" && Boolean(mFF.length);
-  const cFF = form.fornecedor ? mp.fornContratosList[form.fornecedor] || [] : [];
-  const cShow = contMode === "forn" && cFF.length ? cFF : mp.allContratos;
-  const cFiltered = contMode === "forn" && Boolean(cFF.length);
-  const oFF = form.fornecedor ? mp.fornObjetosList[form.fornecedor] || [] : [];
-  const oShow = objMode === "historico" && oFF.length ? oFF : mp.allObjsHist;
-  const secSug = form.orgao && !form.secretario ? mp.orgaoSecretario[form.orgao] : "";
-  const secsOpts = mp.allSecretarios;
+  var mFF = form.fornecedor ? mp.fornModalidadesList[form.fornecedor] || [] : [];
+  var mShow = modMode === "forn" && mFF.length ? mFF : mp.allModalidades;
+  var mFiltered = modMode === "forn" && Boolean(mFF.length);
+  var cFF = form.fornecedor ? mp.fornContratosList[form.fornecedor] || [] : [];
+  var cShow = contMode === "forn" && cFF.length ? cFF : mp.allContratos;
+  var cFiltered = contMode === "forn" && Boolean(cFF.length);
+  var oFF = form.fornecedor ? mp.fornObjetosList[form.fornecedor] || [] : [];
+  var oShow = objMode === "historico" && oFF.length ? oFF : mp.allObjsHist;
+  var secSug = form.orgao && !form.secretario ? mp.orgaoSecretario[form.orgao] : "";
+  var secsOpts = mp.allSecretarios;
   // Usa numeroDuplicado() do sistema de auditoria: verifica duplicata respeitando edição
-  const checarDuplicata = num => numeroDuplicado(num, processos, editMode);
-  const makeDados = () => {
+  var checarDuplicata = num => numeroDuplicado(num, processos, editMode);
+  var makeDados = () => {
     // Auto-completar campos vazios com dados do histórico — SOMENTE em modo criação.
     // Em modo edição (editMode), usa apenas o valor do formulário para garantir que
     // alterações feitas pelo usuário sejam refletidas exatamente no PDF gerado.
-    const forn = form.fornecedor;
-    const org = form.orgao;
-    const useMap = !editMode; // false em edição: sem fallback histórico
-    const cnpj      = form.cnpj      || (useMap ? mp.fornCnpj[forn] || "" : "");
-    const contrato  = form.contrato  || (useMap ? mp.fornContrato[forn] || mp.orgaoContrato[org] || "" : "");
-    const modalidade= form.modalidade|| (useMap ? mp.fornModalidade[forn] || mp.orgaoModalidade[org] || "" : "");
-    const secretario= form.secretario|| (useMap ? mp.orgaoSecretario[org] || "" : "");
-    const objeto    = form.objeto    || (useMap ? mp.fornObjeto[forn] || "" : "");
-    const tipDoc    = form.tipDoc    || (useMap ? mp.fornTipDoc[forn] || "" : "");
-    const periodo   = form.periodo   || (useMap ? mp.fornPeriodo[forn] || "" : "");
-    const tipNf     = form.tipNf     || (useMap ? mp.fornTipNf[forn] || "" : "");
+    var forn = form.fornecedor;
+    var org = form.orgao;
+    var useMap = !editMode; // false em edição: sem fallback histórico
+    var cnpj      = form.cnpj      || (useMap ? mp.fornCnpj[forn] || "" : "");
+    var contrato  = form.contrato  || (useMap ? mp.fornContrato[forn] || mp.orgaoContrato[org] || "" : "");
+    var modalidade= form.modalidade|| (useMap ? mp.fornModalidade[forn] || mp.orgaoModalidade[org] || "" : "");
+    var secretario= form.secretario|| (useMap ? mp.orgaoSecretario[org] || "" : "");
+    var objeto    = form.objeto    || (useMap ? mp.fornObjeto[forn] || "" : "");
+    var tipDoc    = form.tipDoc    || (useMap ? mp.fornTipDoc[forn] || "" : "");
+    var periodo   = form.periodo   || (useMap ? mp.fornPeriodo[forn] || "" : "");
+    var tipNf     = form.tipNf     || (useMap ? mp.fornTipNf[forn] || "" : "");
     return {
       processo:    form.numDoc,
       orgao:       org,
@@ -3817,19 +3816,19 @@ function NovoProcessoPage({
       tipo_doc:    tipDoc,
       tipo_nf:     tipNf,
       obs:         form.obs,
-      controlador: appConfig?.controlador || {}
+      controlador: appConfig.controlador || {}
     };
   };
-  const handleGerarPDF = async () => {    if (loading) return;
+  var handleGerarPDF = async () => {    if (loading) return;
     if (!form.orgao && !form.fornecedor) {
       toast("⚠️ Preencha pelo menos Órgão ou Fornecedor antes de gerar o PDF.", "warn");
       return;
     }
     setLoading(true);
     try {
-      const t = form.tipo,
+      var t = form.tipo,
         s = getChks(t);
-      const r = await gerarPDF(makeDados(), t, form.decisao === "deferir", CHK[t], s);
+      var r = await gerarPDF(makeDados(), t, form.decisao === "deferir", CHK[t], s);
       if (r.error) {
         toast(`❌ PDF: ${r.error}`, "error");
         return;
@@ -3837,8 +3836,8 @@ function NovoProcessoPage({
       setPdfBlob(r.blob);
       setPdfName(r.name || "documento.pdf");
       if (onPdfDownload) onPdfDownload(r.blob, r.name);else {
-        const url = URL.createObjectURL(r.blob);
-        const a = document.createElement("a");
+        var url = URL.createObjectURL(r.blob);
+        var a = document.createElement("a");
         a.href = url;
         a.download = r.name;
         document.body.appendChild(a);
@@ -3856,7 +3855,7 @@ function NovoProcessoPage({
       setLoading(false);
     }
   };
-  const handleSalvar = async () => {
+  var handleSalvar = async () => {
     if (!form.orgao || !form.fornecedor || !form.valor) {
       toast("Preencha Órgão, Fornecedor e Valor.", "error");
       return;
@@ -3882,7 +3881,7 @@ function NovoProcessoPage({
     }
     setLoading(true);
     try {
-      const row = {
+      var row = {
         "NÚMERO DO DOCUMENTO": form.numDoc,
         "DATA": fmtD(form.dataDoc),
         "PERÍODO DE REFERÊNCIA": form.periodo,
@@ -3921,10 +3920,10 @@ function NovoProcessoPage({
       setLoading(false);
     }
   };
-  const handleDL = () => {
+  var handleDL = () => {
     if (!pdfBlob) return;
-    const url = URL.createObjectURL(pdfBlob);
-    const a = document.createElement("a");
+    var url = URL.createObjectURL(pdfBlob);
+    var a = document.createElement("a");
     a.href = url;
     a.download = pdfName || "documento.pdf";
     document.body.appendChild(a);
@@ -3935,17 +3934,17 @@ function NovoProcessoPage({
     }, 2000);
     toast("✅ PDF baixado!");
   };
-  const handleImprimir = () => {
+  var handleImprimir = () => {
     if (!pdfBlob) {
       toast("Gere o PDF primeiro.", "warn");
       return;
     }
-    const url = URL.createObjectURL(pdfBlob);
-    const iframe = document.createElement("iframe");
+    var url = URL.createObjectURL(pdfBlob);
+    var iframe = document.createElement("iframe");
     iframe.style.cssText = "position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;";
     iframe.src = url;
-    const cleanup = () => {
-      try { document.body.removeChild(iframe); } catch {}
+    var cleanup = () => {
+      try { document.body.removeChild(iframe); } catch(e){}
       URL.revokeObjectURL(url);
     };
     document.body.appendChild(iframe);
@@ -3960,10 +3959,10 @@ function NovoProcessoPage({
     };
     iframe.onerror = () => { cleanup(); toast("Erro ao abrir PDF para impressão.", "warn"); };
   };
-  const handleLimpar = () => {
+  var handleLimpar = () => {
     // [FIX9] Usa ConfirmModal em vez de window.confirm
-    const temDados = form.orgao || form.fornecedor || form.valor || form.objeto || form.cnpj;
-    const msg = temDados
+    var temDados = form.orgao || form.fornecedor || form.valor || form.objeto || form.cnpj;
+    var msg = temDados
       ? "Existem dados preenchidos no formulário.\n\nTem certeza que deseja limpar tudo? Esta ação não pode ser desfeita."
       : "Limpar todos os campos do formulário?";
     setConfirmModal({
@@ -3982,8 +3981,8 @@ function NovoProcessoPage({
       }
     });
   };
-  const ultimoProcesso = processos[processos.length - 1] || null;
-  const handleDuplicarUltimo = () => {
+  var ultimoProcesso = processos[processos.length - 1] || null;
+  var handleDuplicarUltimo = () => {
     if (!ultimoProcesso) {
       toast("Nenhum processo salvo.", "warn");
       return;
@@ -3999,16 +3998,16 @@ function NovoProcessoPage({
   handleGerarPDFRef.current = handleGerarPDF;
   handleLimparRef.current = handleLimpar;
   handleDuplicarUltimoRef.current = handleDuplicarUltimo;
-  const ti = TINFO[form.tipo];
-  const chkItems = CHK[form.tipo] || [];
-  const sits = getChks(form.tipo);
-  const pctChk = chkItems.length ? Math.round(sits.filter(Boolean).length / chkItems.length * 100) : 100;
-  const bg = dark ? T.appBgDark : T.appBg,
+  var ti = TINFO[form.tipo];
+  var chkItems = CHK[form.tipo] || [];
+  var sits = getChks(form.tipo);
+  var pctChk = chkItems.length ? Math.round(sits.filter(Boolean).length / chkItems.length * 100) : 100;
+  var bg = dark ? T.appBgDark : T.appBg,
     cardBg = dark ? T.cardBgDark : T.cardBg;
-  const bdr = dark ? T.borderDark : T.border,
+  var bdr = dark ? T.borderDark : T.border,
     tc = dark ? T.textMainDark : T.textMain;
-  const iStyle = IS(dark);
-  const tabSt = i => ({
+  var iStyle = IS(dark);
+  var tabSt = i => ({
     padding: "9px 16px",
     fontSize: 12.5,
     fontWeight: 600,
@@ -4054,7 +4053,7 @@ function NovoProcessoPage({
       cursor: "pointer"
     }
   }, "\u2715 Cancelar")), /*#__PURE__*/React.createElement(PageHeader, {
-    icon: ti?.icon || "📄",
+    icon: ti.icon || "📄",
     title: editMode ? `✏️ Editando Processo #${editMode}` : "Novo Processo",
     sub: editMode ? "Alterações substituirão o registro original" : "Preencha os dados e gere os documentos",
     dark: dark,
@@ -4149,7 +4148,7 @@ function NovoProcessoPage({
       marginBottom: 16
     }
   }, Object.entries(TINFO).map(([tk, ti2]) => {
-    const act = form.tipo === tk;
+    var act = form.tipo === tk;
     return /*#__PURE__*/React.createElement("div", {
       key: tk,
       onClick: () => setForm(f => ({
@@ -4831,31 +4830,31 @@ function BuscarPage({
   dark,
   user
 }) {
-  const [q, setQ] = useState("");
-  const [sort, setSort] = useState({
+  var [q, setQ] = useState("");
+  var [sort, setSort] = useState({
     col: "NÚMERO DO DOCUMENTO",
     dir: -1 // do último para o primeiro por padrão
   });
   // [FIX5] Filtros avançados
-  const [filtTipo, setFiltTipo] = useState("");
-  const [filtDec, setFiltDec] = useState("");
-  const [filtAno, setFiltAno] = useState("");
-  const [lPDF, setLPDF] = useState(null);
-  const dq = useDebounce(q, 300);
-  const bg = dark ? T.appBgDark : T.appBg,
+  var [filtTipo, setFiltTipo] = useState("");
+  var [filtDec, setFiltDec] = useState("");
+  var [filtAno, setFiltAno] = useState("");
+  var [lPDF, setLPDF] = useState(null);
+  var dq = useDebounce(q, 300);
+  var bg = dark ? T.appBgDark : T.appBg,
     cardBg = dark ? T.cardBgDark : T.cardBg,
     bdr = dark ? T.borderDark : T.border,
     tc = dark ? T.textMainDark : T.textMain;
   // Anos disponíveis para filtro
-  const anosDisp = useMemo(() => {
-    const s = new Set();
-    processos.forEach(p => { const m = String(p["DATA"] || "").match(/\d{4}/); if (m) s.add(m[0]); });
+  var anosDisp = useMemo(() => {
+    var s = new Set();
+    processos.forEach(p => { var m = String(p["DATA"] || "").match(/\d{4}/); if (m) s.add(m[0]); });
     return [...s].sort().reverse();
   }, [processos]);
-  const filtered = useMemo(() => {
-    let r = processos;
+  var filtered = useMemo(() => {
+    var r = processos;
     if (dq.trim()) {
-      const ql = dq.toLowerCase();
+      var ql = dq.toLowerCase();
       r = r.filter(p => ["NÚMERO DO DOCUMENTO", "FORNECEDOR", "ORGÃO", "OBJETO", "CONTRATO", "VALOR", "DATA", "CNPJ"].some(c => String(p[c] || "").toLowerCase().includes(ql)));
     }
     if (filtTipo) r = r.filter(p => (p["_tipoKey"] || "padrao") === filtTipo);
@@ -4866,22 +4865,22 @@ function BuscarPage({
     }
     if (filtAno) r = r.filter(p => String(p["DATA"] || "").includes(filtAno));
     return [...r].sort((a, b) => {
-      const va = a[sort.col] ?? "";
-      const vb = b[sort.col] ?? "";
+      var va = a[sort.col] || "";
+      var vb = b[sort.col] || "";
       // Ordenação numérica para NÚMERO DO DOCUMENTO
       if (sort.col === "NÚMERO DO DOCUMENTO") {
-        const na = parseInt(String(va).trim(), 10);
-        const nb = parseInt(String(vb).trim(), 10);
+        var na = parseInt(String(va).trim(), 10);
+        var nb = parseInt(String(vb).trim(), 10);
         if (!isNaN(na) && !isNaN(nb)) return (na - nb) * sort.dir;
       }
       return String(va).localeCompare(String(vb), "pt-BR") * sort.dir;
     });
   }, [processos, dq, sort, filtTipo, filtDec, filtAno]);
-  const limitado = filtered.length > 100;
-  const exibidos = filtered.slice(0, 100);
-  const cols = ["NÚMERO DO DOCUMENTO", "ORGÃO", "FORNECEDOR", "CNPJ", "VALOR", "DATA", "OBJETO", "_usuario"];
-  const colLabel = c => c === "NÚMERO DO DOCUMENTO" ? "Nº DOC" : c === "_usuario" ? "Usuário" : c === "CNPJ" ? "CNPJ/CPF" : c;
-  const toggleSort = col => setSort(s => s.col === col ? {
+  var limitado = filtered.length > 100;
+  var exibidos = filtered.slice(0, 100);
+  var cols = ["NÚMERO DO DOCUMENTO", "ORGÃO", "FORNECEDOR", "CNPJ", "VALOR", "DATA", "OBJETO", "_usuario"];
+  var colLabel = c => c === "NÚMERO DO DOCUMENTO" ? "Nº DOC" : c === "_usuario" ? "Usuário" : c === "CNPJ" ? "CNPJ/CPF" : c;
+  var toggleSort = col => setSort(s => s.col === col ? {
     col,
     dir: s.dir * -1
   } : {
@@ -5116,32 +5115,32 @@ function DashboardPage({
   appConfig,
   toast
 }) {
-  const [filtOrg, setFiltOrg] = useState("");
-  const [filtAno, setFiltAno] = useState("");
-  const [tooltip, setTooltip] = useState(null);
-  const mp = useMemo(() => buildMapData(processos), [processos]);
-  const anos = useMemo(() => {
-    const s = new Set();
+  var [filtOrg, setFiltOrg] = useState("");
+  var [filtAno, setFiltAno] = useState("");
+  var [tooltip, setTooltip] = useState(null);
+  var mp = useMemo(() => buildMapData(processos), [processos]);
+  var anos = useMemo(() => {
+    var s = new Set();
     processos.forEach(p => {
-      const d = String(p["DATA"] || "");
-      const m = d.match(/\d{4}/);
+      var d = String(p["DATA"] || "");
+      var m = d.match(/\d{4}/);
       if (m) s.add(m[0]);
     });
     return [...s].sort().reverse();
   }, [processos]);
-  const filtered = useMemo(() => processos.filter(p => {
+  var filtered = useMemo(() => processos.filter(p => {
     if (filtOrg && p["ORGÃO"] !== filtOrg) return false;
     if (filtAno && !String(p["DATA"] || "").includes(filtAno)) return false;
     return true;
   }), [processos, filtOrg, filtAno]);
 
   // Processos por mês (últimos 12)
-  const porMes = useMemo(() => {
-    const m = {};
+  var porMes = useMemo(() => {
+    var m = {};
     filtered.forEach(p => {
-      const raw = String(p["DATA"] || "");
+      var raw = String(p["DATA"] || "");
       // dd/mm/yyyy → yyyy-mm
-      let chave = "";
+      var chave = "";
       if (/^\d{2}\/\d{2}\/\d{4}/.test(raw)) {
         chave = raw.slice(6, 10) + "-" + raw.slice(3, 5);
       } else if (/^\d{4}-\d{2}/.test(raw)) {
@@ -5153,23 +5152,23 @@ function DashboardPage({
   }, [filtered]);
 
   // [FIX8] Total financeiro — soma campo VALOR de todos os processos filtrados
-  const parseBRL = v => {
+  var parseBRL = v => {
     if (!v) return 0;
-    const s = String(v).replace(/\./g, "").replace(",", ".").replace(/[^\d.]/g, "");
-    const n = parseFloat(s);
+    var s = String(v).replace(/\./g, "").replace(",", ".").replace(/[^\d.]/g, "");
+    var n = parseFloat(s);
     return isNaN(n) ? 0 : n;
   };
-  const totalGeral = useMemo(() =>
+  var totalGeral = useMemo(() =>
     filtered.reduce((acc, p) => acc + parseBRL(p["VALOR"]), 0),
   [filtered]);
-  const fmtBRL = v => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  var fmtBRL = v => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
   // Top 8 órgãos
-  const topOrg = useMemo(() => {
-    const m = {};
-    const mv = {};
+  var topOrg = useMemo(() => {
+    var m = {};
+    var mv = {};
     filtered.forEach(p => {
-      const o = String(p["ORGÃO"] || "").trim();
+      var o = String(p["ORGÃO"] || "").trim();
       if (o) {
         m[o] = (m[o] || 0) + 1;
         mv[o] = (mv[o] || 0) + parseBRL(p["VALOR"]);
@@ -5178,55 +5177,55 @@ function DashboardPage({
     return Object.entries(m).sort(([, a], [, b]) => b - a).slice(0, 8).map(([o, n]) => ({ orgao: o, n, valor: mv[o] || 0 }));
   }, [filtered]);
 
-  const bg = dark ? T.appBgDark : T.appBg,
+  var bg = dark ? T.appBgDark : T.appBg,
     cardBg = dark ? T.cardBgDark : T.cardBg,
     bdr = dark ? T.borderDark : T.border,
     tc = dark ? T.textMainDark : T.textMain;
 
 
   // [G-R2] Comparativo: mês atual vs anterior
-  const comparativo = useMemo(() => {
-    const now = new Date();
-    const mesAtual = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
-    const ant = new Date(now.getFullYear(), now.getMonth()-1, 1);
-    const mesAnt = `${ant.getFullYear()}-${String(ant.getMonth()+1).padStart(2,"0")}`;
-    const getChave = p => {
-      const raw = String(p["DATA"] || "");
+  var comparativo = useMemo(() => {
+    var now = new Date();
+    var mesAtual = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
+    var ant = new Date(now.getFullYear(), now.getMonth()-1, 1);
+    var mesAnt = `${ant.getFullYear()}-${String(ant.getMonth()+1).padStart(2,"0")}`;
+    var getChave = p => {
+      var raw = String(p["DATA"] || "");
       if (/^\d{2}\/\d{2}\/\d{4}/.test(raw)) return raw.slice(6,10)+"-"+raw.slice(3,5);
       if (/^\d{4}-\d{2}/.test(raw)) return raw.slice(0,7);
       return "";
     };
-    const cur = filtered.filter(p => getChave(p) === mesAtual);
-    const prv = filtered.filter(p => getChave(p) === mesAnt);
-    const parseBRLLocal = v => { const s=String(v||"").replace(/\./g,"").replace(",",".").replace(/[^\d.]/g,""); const n=parseFloat(s); return isNaN(n)?0:n; };
-    const curVal = cur.reduce((a,p)=>a+parseBRLLocal(p["VALOR"]),0);
-    const prvVal = prv.reduce((a,p)=>a+parseBRLLocal(p["VALOR"]),0);
-    const pctN = prv.length ? Math.round((cur.length-prv.length)/prv.length*100) : null;
-    const pctV = prvVal ? Math.round((curVal-prvVal)/prvVal*100) : null;
+    var cur = filtered.filter(p => getChave(p) === mesAtual);
+    var prv = filtered.filter(p => getChave(p) === mesAnt);
+    var parseBRLLocal = v => { var s=String(v||"").replace(/\./g,"").replace(",",".").replace(/[^\d.]/g,""); var n=parseFloat(s); return isNaN(n)?0:n; };
+    var curVal = cur.reduce((a,p)=>a+parseBRLLocal(p["VALOR"]),0);
+    var prvVal = prv.reduce((a,p)=>a+parseBRLLocal(p["VALOR"]),0);
+    var pctN = prv.length ? Math.round((cur.length-prv.length)/prv.length*100) : null;
+    var pctV = prvVal ? Math.round((curVal-prvVal)/prvVal*100) : null;
     return { curN: cur.length, prvN: prv.length, curVal, prvVal, pctN, pctV, mesAtual, mesAnt };
   }, [filtered]);
 
   // ── Gráfico de linha SVG ─────────────────────────────────────────────────
-  const LineChartSVG = ({ data }) => {
+  var LineChartSVG = ({ data }) => {
     if (!data.length) return null;
-    const W = 600, H = 160, PL = 36, PR = 12, PT = 12, PB = 28;
-    const cW = W - PL - PR, cH = H - PT - PB;
-    const maxN = Math.max(...data.map(d => d.n), 1);
-    const xs = data.map((_, i) => PL + (i / Math.max(data.length - 1, 1)) * cW);
-    const ys = data.map(d => PT + cH - (d.n / maxN) * cH);
-    const polyline = xs.map((x, i) => `${x},${ys[i]}`).join(" ");
-    const area = `M${PL},${PT + cH} ` + xs.map((x, i) => `L${x},${ys[i]}`).join(" ") + ` L${xs[xs.length-1]},${PT+cH} Z`;
+    var W = 600, H = 160, PL = 36, PR = 12, PT = 12, PB = 28;
+    var cW = W - PL - PR, cH = H - PT - PB;
+    var maxN = Math.max(...data.map(d => d.n), 1);
+    var xs = data.map((_, i) => PL + (i / Math.max(data.length - 1, 1)) * cW);
+    var ys = data.map(d => PT + cH - (d.n / maxN) * cH);
+    var polyline = xs.map((x, i) => `${x},${ys[i]}`).join(" ");
+    var area = `M${PL},${PT + cH} ` + xs.map((x, i) => `L${x},${ys[i]}`).join(" ") + ` L${xs[xs.length-1]},${PT+cH} Z`;
     return /*#__PURE__*/React.createElement("div", { style: { overflowX: "auto" } },
       /*#__PURE__*/React.createElement("svg", { viewBox: `0 0 ${W} ${H}`, style: { width: "100%", minWidth: 300, height: H } },
         // grid lines
         [0.25, 0.5, 0.75, 1].map(f => {
-          const y = PT + cH - f * cH;
+          var y = PT + cH - f * cH;
           return /*#__PURE__*/React.createElement("line", { key: f, x1: PL, y1: y, x2: W - PR, y2: y,
             stroke: dark ? "#1e2d40" : "#e2e8f0", strokeWidth: 1, strokeDasharray: "3 3" });
         }),
         // Y labels
         [0, Math.round(maxN / 2), maxN].map((v, i) => {
-          const y = PT + cH - (v / maxN) * cH;
+          var y = PT + cH - (v / maxN) * cH;
           return /*#__PURE__*/React.createElement("text", { key: i, x: PL - 6, y: y + 4,
             textAnchor: "end", fontSize: 9, fill: "#94a3b8" }, v);
         }),
@@ -5260,34 +5259,34 @@ function DashboardPage({
   // ── Gráfico de barras CSS ─────────────────────────────────────────────────
 
   // [J-V1] Gráfico de pizza SVG — distribuição por tipo de processo
-  const porTipo = useMemo(() => {
-    const m = {};
+  var porTipo = useMemo(() => {
+    var m = {};
     filtered.forEach(p => {
-      const k = p["_tipoKey"] || "padrao";
+      var k = p["_tipoKey"] || "padrao";
       m[k] = (m[k] || 0) + 1;
     });
     return Object.entries(m).map(([k, n]) => ({
-      key: k, label: TINFO[k]?.label || k,
-      cor: TINFO[k]?.cor || "#888", n,
+      key: k, label: TINFO[k].label || k,
+      cor: TINFO[k].cor || "#888", n,
       pct: filtered.length ? (n / filtered.length) * 100 : 0
     })).sort((a,b) => b.n - a.n);
   }, [filtered]);
 
-  const PieChartSVG = ({ data }) => {
+  var PieChartSVG = ({ data }) => {
     if (!data.length) return null;
-    const R = 70, CX = 90, CY = 90;
-    let start = -Math.PI / 2;
-    const slices = data.map(d => {
-      const angle = (d.pct / 100) * 2 * Math.PI;
-      const x1 = CX + R * Math.cos(start);
-      const y1 = CY + R * Math.sin(start);
-      const x2 = CX + R * Math.cos(start + angle);
-      const y2 = CY + R * Math.sin(start + angle);
-      const large = angle > Math.PI ? 1 : 0;
-      const path = `M${CX},${CY} L${x1},${y1} A${R},${R} 0 ${large},1 ${x2},${y2} Z`;
-      const mid = start + angle / 2;
-      const lx = CX + (R * 0.65) * Math.cos(mid);
-      const ly = CY + (R * 0.65) * Math.sin(mid);
+    var R = 70, CX = 90, CY = 90;
+    var start = -Math.PI / 2;
+    var slices = data.map(d => {
+      var angle = (d.pct / 100) * 2 * Math.PI;
+      var x1 = CX + R * Math.cos(start);
+      var y1 = CY + R * Math.sin(start);
+      var x2 = CX + R * Math.cos(start + angle);
+      var y2 = CY + R * Math.sin(start + angle);
+      var large = angle > Math.PI ? 1 : 0;
+      var path = `M${CX},${CY} L${x1},${y1} A${R},${R} 0 ${large},1 ${x2},${y2} Z`;
+      var mid = start + angle / 2;
+      var lx = CX + (R * 0.65) * Math.cos(mid);
+      var ly = CY + (R * 0.65) * Math.sin(mid);
       start += angle;
       return { ...d, path, lx, ly };
     });
@@ -5311,10 +5310,10 @@ function DashboardPage({
     );
   };
 
-  const BarChartCSS = ({ data }) => {
+  var BarChartCSS = ({ data }) => {
     if (!data.length) return null;
-    const maxN = Math.max(...data.map(d => d.n), 1);
-    const cores = ["#3b6ef8","#16a34a","#7c3aed","#d97706","#0891b2","#dc2626","#059669","#be185d"];
+    var maxN = Math.max(...data.map(d => d.n), 1);
+    var cores = ["#3b6ef8","#16a34a","#7c3aed","#d97706","#0891b2","#dc2626","#059669","#be185d"];
     return /*#__PURE__*/React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8 } },
       data.map((d, i) => /*#__PURE__*/React.createElement("div", { key: i, style: { display: "flex", alignItems: "center", gap: 8 } },
         /*#__PURE__*/React.createElement("div", {
@@ -5396,14 +5395,14 @@ function DashboardPage({
       },
         /*#__PURE__*/React.createElement("button", {
           onClick: async () => {
-            const now = new Date();
-            const mStr = String(now.getMonth()+1).padStart(2,"0");
-            const mesAno = `${mStr}/${now.getFullYear()}`;
+            var now = new Date();
+            var mStr = String(now.getMonth()+1).padStart(2,"0");
+            var mesAno = `${mStr}/${now.getFullYear()}`;
             toast("⏳ Gerando relatório...", "info");
-            const r = await gerarRelatorioPDF(filtered.length ? filtered : processos, mesAno, appConfig || {});
+            var r = await gerarRelatorioPDF(filtered.length ? filtered : processos, mesAno, appConfig || {});
             if (r.error) { toast("❌ " + r.error, "error"); return; }
-            const url = URL.createObjectURL(r.blob);
-            const a = document.createElement("a"); a.href = url; a.download = r.name;
+            var url = URL.createObjectURL(r.blob);
+            var a = document.createElement("a"); a.href = url; a.download = r.name;
             document.body.appendChild(a); a.click();
             setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 2000);
             toast("✅ Relatório mensal gerado!");
@@ -5473,20 +5472,20 @@ function HistoricoPage({
   onEditar,
   truncado
 }) {
-  const [q, setQ] = useState("");
-  const [filtDec, setFiltDec] = useState("");
+  var [q, setQ] = useState("");
+  var [filtDec, setFiltDec] = useState("");
   // [FIX2] Paginação real — 50 por página
-  const [pagAtual, setPagAtual] = useState(0);
-  const PER_PAGE = 50;
-  const [lPDF, setLPDF] = useState(null);
-  const bg = dark ? T.appBgDark : T.appBg,
+  var [pagAtual, setPagAtual] = useState(0);
+  var PER_PAGE = 50;
+  var [lPDF, setLPDF] = useState(null);
+  var bg = dark ? T.appBgDark : T.appBg,
     cardBg = dark ? T.cardBgDark : T.cardBg,
     bdr = dark ? T.borderDark : T.border,
     tc = dark ? T.textMainDark : T.textMain;
-  const filtered = useMemo(() => {
-    let r = historico;
+  var filtered = useMemo(() => {
+    var r = historico;
     if (q.trim()) {
-      const ql = q.toLowerCase();
+      var ql = q.toLowerCase();
       r = r.filter(h => ["Processo", "Órgão", "Fornecedor", "Tipo", "Valor", "CNPJ"].some(c => String(h[c] || "").toLowerCase().includes(ql)));
     }
     if (filtDec) {
@@ -5500,16 +5499,16 @@ function HistoricoPage({
   }, [historico, q, filtDec]);
   // Reset página ao filtrar
   useEffect(() => { setPagAtual(0); }, [q, filtDec]);
-  const totalPags = Math.ceil(filtered.length / PER_PAGE);
-  const exibidos = useMemo(() => filtered.slice(pagAtual * PER_PAGE, (pagAtual + 1) * PER_PAGE), [filtered, pagAtual]);
-  const def = useMemo(() => historico.filter(h => {
-    const d = String(h["Decisão"] || "");
+  var totalPags = Math.ceil(filtered.length / PER_PAGE);
+  var exibidos = useMemo(() => filtered.slice(pagAtual * PER_PAGE, (pagAtual + 1) * PER_PAGE), [filtered, pagAtual]);
+  var def = useMemo(() => historico.filter(h => {
+    var d = String(h["Decisão"] || "");
     return d.includes("DEFERIDO") && !d.includes("INDE");
   }).length, [historico]);
-  const indef = useMemo(() => historico.filter(h =>
+  var indef = useMemo(() => historico.filter(h =>
     String(h["Decisão"] || "").includes("INDE")
   ).length, [historico]);
-  const handlePDF = async (h, idx) => {
+  var handlePDF = async (h, idx) => {
     if (lPDF !== null) return;
     setLPDF(idx);
     try {
@@ -5668,10 +5667,10 @@ function HistoricoPage({
       textTransform: "uppercase"
     }
   }, "A\xE7\xF5es"))), /*#__PURE__*/React.createElement("tbody", null, exibidos.map((h, i) => {
-    const dec = String(h["Decisão"] || "");
-    const isDef = dec.includes("DEFERIDO") && !dec.includes("INDE");
-    const isIndef = dec.includes("INDE");
-    const isPend = !isDef && !isIndef;
+    var dec = String(h["Decisão"] || "");
+    var isDef = dec.includes("DEFERIDO") && !dec.includes("INDE");
+    var isIndef = dec.includes("INDE");
+    var isPend = !isDef && !isIndef;
     return /*#__PURE__*/React.createElement("tr", {
       key: i,
       style: {
@@ -5850,23 +5849,23 @@ function UsuariosPage({
   dark,
   toast
 }) {
-  const [users, setUsers] = useState({});
-  const [novoLogin, setNovoLogin] = useState("");
-  const [novaSenha, setNovaSenha] = useState("");
-  const [novoNome, setNovoNome] = useState("");
-  const [novoPerfil, setNovoPerfil] = useState("operador");
-  const [loading, setLoading] = useState(false);
+  var [users, setUsers] = useState({});
+  var [novoLogin, setNovoLogin] = useState("");
+  var [novaSenha, setNovaSenha] = useState("");
+  var [novoNome, setNovoNome] = useState("");
+  var [novoPerfil, setNovoPerfil] = useState("operador");
+  var [loading, setLoading] = useState(false);
   // [FIX3] Modal de redefinição de senha — substitui window.prompt
-  const [modalSenha, setModalSenha] = useState(null); // { login }
-  const bg = dark ? T.appBgDark : T.appBg,
+  var [modalSenha, setModalSenha] = useState(null); // { login }
+  var bg = dark ? T.appBgDark : T.appBg,
     cardBg = dark ? T.cardBgDark : T.cardBg,
     bdr = dark ? T.borderDark : T.border,
     tc = dark ? T.textMainDark : T.textMain;
-  const iStyle = IS(dark);
+  var iStyle = IS(dark);
   useEffect(() => {
     loadUsers().then(setUsers);
   }, []);
-  const handleAdicionar = async () => {
+  var handleAdicionar = async () => {
     if (!novoLogin.trim() || !novaSenha.trim() || !novoNome.trim()) {
       toast("Preencha todos os campos.", "error");
       return;
@@ -5877,9 +5876,9 @@ function UsuariosPage({
     }
     setLoading(true);
     try {
-      const salt = crypto.randomUUID().replace(/-/g, "").slice(0, 32);
-      const hash = await hashSenha(salt, novaSenha);
-      const updated = {
+      var salt = _generateUUID().replace(/-/g, "").slice(0, 32);
+      var hash = await hashSenha(salt, novaSenha);
+      var updated = {
         ...users,
         [novoLogin]: {
           senha: hash,
@@ -5899,12 +5898,12 @@ function UsuariosPage({
       setLoading(false);
     }
   };
-  const toggleAtivo = async login => {
+  var toggleAtivo = async login => {
     if (login === "admin") {
       toast("Não é possível desativar o admin.", "warn");
       return;
     }
-    const updated = {
+    var updated = {
       ...users,
       [login]: {
         ...users[login],
@@ -5915,14 +5914,14 @@ function UsuariosPage({
     setUsers(updated);
     toast(updated[login].ativo ? "✅ Usuário ativado." : "⚠️ Usuário desativado.", "info");
   };
-  const handleResetSenha = async login => {
+  var handleResetSenha = async login => {
     // [FIX3] Usa ModalSenha em vez de window.prompt (funciona em Safari iOS)
     setModalSenha({ login });
   };
-  const confirmarResetSenha = async (login, ns) => {
-    const salt = crypto.randomUUID().replace(/-/g, "").slice(0, 32);
-    const hash = await hashSenha(salt, ns.trim());
-    const updated = {
+  var confirmarResetSenha = async (login, ns) => {
+    var salt = _generateUUID().replace(/-/g, "").slice(0, 32);
+    var hash = await hashSenha(salt, ns.trim());
+    var updated = {
       ...users,
       [login]: {
         ...users[login],
@@ -6084,26 +6083,26 @@ function OrgaosPage({
   dark,
   toast
 }) {
-  const mp = useMemo(() => buildMapData(processos), [processos]);
-  const [novoOrg, setNovoOrg] = useState("");
-  const [novoSec, setNovoSec] = useState("");
-  const bg = dark ? T.appBgDark : T.appBg,
+  var mp = useMemo(() => buildMapData(processos), [processos]);
+  var [novoOrg, setNovoOrg] = useState("");
+  var [novoSec, setNovoSec] = useState("");
+  var bg = dark ? T.appBgDark : T.appBg,
     cardBg = dark ? T.cardBgDark : T.cardBg,
     bdr = dark ? T.borderDark : T.border,
     tc = dark ? T.textMainDark : T.textMain;
-  const iStyle = IS(dark);
+  var iStyle = IS(dark);
 
   // Merge dos órgãos dos processos com a config
-  const allOrgs = useMemo(() => {
-    const s = new Set([...mp.allOrgaos, ...Object.keys(orgaosConfig)]);
+  var allOrgs = useMemo(() => {
+    var s = new Set([...mp.allOrgaos, ...Object.keys(orgaosConfig)]);
     return [...s].sort();
   }, [mp.allOrgaos, orgaosConfig]);
-  const toggleAtivo = async org => {
-    const cur = orgaosConfig[org] || {
+  var toggleAtivo = async org => {
+    var cur = orgaosConfig[org] || {
       secretario: "",
       ativo: true
     };
-    const updated = {
+    var updated = {
       ...orgaosConfig,
       [org]: {
         ...cur,
@@ -6114,12 +6113,12 @@ function OrgaosPage({
     onOrgaosChange(updated);
     toast(updated[org].ativo ? "✅ Órgão ativado." : "⚠️ Órgão desativado.", "info");
   };
-  const handleAdicionar = async () => {
+  var handleAdicionar = async () => {
     if (!novoOrg.trim()) {
       toast("Nome do órgão obrigatório.", "error");
       return;
     }
-    const updated = {
+    var updated = {
       ...orgaosConfig,
       [novoOrg.trim()]: {
         secretario: novoSec.trim(),
@@ -6203,11 +6202,11 @@ function OrgaosPage({
       overflowY: "auto"
     }
   }, allOrgs.map(org => {
-    const cfg = orgaosConfig[org] || {
+    var cfg = orgaosConfig[org] || {
       secretario: "",
       ativo: true
     };
-    const ativo = cfg.ativo !== false;
+    var ativo = cfg.ativo !== false;
     return /*#__PURE__*/React.createElement("div", {
       key: org,
       style: {
@@ -6248,25 +6247,25 @@ function OrgaosPage({
 
 // ─── ControladorForm ──────────────────────────────────────────────────────────
 function ControladorForm({ appConfig, setAppConfig, dark, toast }) {
-  const ctrl = appConfig?.controlador || {};
-  const [nome,     setNome]     = useState(ctrl.nome     || "");
-  const [cargo,    setCargo]    = useState(ctrl.cargo    || "");
-  const [portaria, setPortaria] = useState(ctrl.portaria || "");
-  const [salvando, setSalvando] = useState(false);
-  const [salvo,    setSalvo]    = useState(false);
+  var ctrl = appConfig.controlador || {};
+  var [nome,     setNome]     = useState(ctrl.nome     || "");
+  var [cargo,    setCargo]    = useState(ctrl.cargo    || "");
+  var [portaria, setPortaria] = useState(ctrl.portaria || "");
+  var [salvando, setSalvando] = useState(false);
+  var [salvo,    setSalvo]    = useState(false);
 
   // Sincronizar se appConfig mudar externamente
   useEffect(() => {
-    const c = appConfig?.controlador || {};
+    var c = appConfig.controlador || {};
     setNome(c.nome     || "");
     setCargo(c.cargo   || "");
     setPortaria(c.portaria || "");
   }, [appConfig]);
 
-  const handleSalvar = async () => {
+  var handleSalvar = async () => {
     if (!nome.trim()) { toast("⚠️ Nome do controlador é obrigatório.", "warn"); return; }
     setSalvando(true);
-    const u = {
+    var u = {
       ...appConfig,
       controlador: { nome: nome.trim(), cargo: cargo.trim(), portaria: portaria.trim() }
     };
@@ -6278,8 +6277,8 @@ function ControladorForm({ appConfig, setAppConfig, dark, toast }) {
     setTimeout(() => setSalvo(false), 3000);
   };
 
-  const iStyle = IS(dark);
-  const alterado =
+  var iStyle = IS(dark);
+  var alterado =
     nome     !== (ctrl.nome     || "") ||
     cargo    !== (ctrl.cargo    || "") ||
     portaria !== (ctrl.portaria || "");
@@ -6354,16 +6353,16 @@ function ConfigPage({
   user,
   onLimparBanco
 }) {
-  const [importLoading, setImportLoading] = useState(false);
-  const [dbLoading, setDbLoading] = useState(false);
-  const [showApagar, setShowApagar] = useState(false);
-  const [senhaApagar, setSenhaApagar] = useState("");
-  const [apagarErr, setApagarErr] = useState("");
-  const [apagarLoading, setApagarLoading] = useState(false);
+  var [importLoading, setImportLoading] = useState(false);
+  var [dbLoading, setDbLoading] = useState(false);
+  var [showApagar, setShowApagar] = useState(false);
+  var [senhaApagar, setSenhaApagar] = useState("");
+  var [apagarErr, setApagarErr] = useState("");
+  var [apagarLoading, setApagarLoading] = useState(false);
   // [FIX-BACKUP] ConfirmModal para restaurar backup (substitui window.confirm)
-  const [confirmBackup, setConfirmBackup] = useState(null); // { item }
-  const isAdmin = user?.perfil === "admin";
-  const handleConfirmarApagar = async () => {
+  var [confirmBackup, setConfirmBackup] = useState(null); // { item }
+  var isAdmin = user.perfil === "admin";
+  var handleConfirmarApagar = async () => {
     if (!senhaApagar.trim()) {
       setApagarErr("Digite sua senha.");
       return;
@@ -6371,7 +6370,7 @@ function ConfigPage({
     setApagarLoading(true);
     setApagarErr("");
     try {
-      const ok = await checkLogin(user.login, senhaApagar.trim());
+      var ok = await checkLogin(user.login, senhaApagar.trim());
       if (!ok) {
         setApagarErr("Senha incorreta. Tente novamente.");
         return;
@@ -6383,42 +6382,42 @@ function ConfigPage({
       setApagarLoading(false);
     }
   };
-  const bg = dark ? T.appBgDark : T.appBg,
+  var bg = dark ? T.appBgDark : T.appBg,
     cardBg = dark ? T.cardBgDark : T.cardBg,
     bdr = dark ? T.borderDark : T.border,
     tc = dark ? T.textMainDark : T.textMain;
-  const handleExportExcel = () => {
+  var handleExportExcel = () => {
     exportarExcel(processos, historico);
     toast("✅ Excel exportado!");
   };
   // [G-S2] Restaurar backup
-  const [backupList, setBackupList] = React.useState([]);
+  var [backupList, setBackupList] = React.useState([]);
   React.useEffect(() => {
     ST.list("backup_").then(rows => {
       if (rows) setBackupList(rows.sort((a,b) => b.key.localeCompare(a.key)).slice(0,4));
     });
   }, []);
-  const handleRestaurarBackup = async (item) => {
+  var handleRestaurarBackup = async (item) => {
     // [FIX-BACKUP] Usa ConfirmModal em vez de window.confirm (funciona em Safari iOS)
     setConfirmBackup({ item });
   };
-  const confirmarRestaurarBackup = async (item) => {
+  var confirmarRestaurarBackup = async (item) => {
     setConfirmBackup(null);
-    const snap = item.value;
-    if (snap?.processos) { await ST.set("processos", snap.processos); }
-    if (snap?.historico) { await ST.set("historico", snap.historico); }
+    var snap = item.value;
+    if (snap.processos) { await ST.set("processos", snap.processos); }
+    if (snap.historico) { await ST.set("historico", snap.historico); }
     toast("✅ Backup restaurado! Recarregando...", "info");
     setTimeout(() => location.reload(), 1500);
   };
-  const [importPct, setImportPct] = React.useState(0); // [M-P3] progresso
-  const handleImportExcel = async e => {
-    const file = e.target.files?.[0];
+  var [importPct, setImportPct] = React.useState(0); // [M-P3] progresso
+  var handleImportExcel = async e => {
+    var file = e.target.files[0];
     if (!file) return;
     setImportLoading(true);
     setImportPct(0);
     try {
       // [M-P3] Usa Web Worker para não travar a UI
-      const rows = await importarExcelWorker(file, pct => setImportPct(pct));
+      var rows = await importarExcelWorker(file, pct => setImportPct(pct));
       onImport(rows, rows._lastNum || 0);
       toast(`✅ Importados ${rows.length} registros.`);
     } catch (err) {
@@ -6429,12 +6428,12 @@ function ConfigPage({
       e.target.value = "";
     }
   };
-  const handleImportDB = async e => {
-    const file = e.target.files?.[0];
+  var handleImportDB = async e => {
+    var file = e.target.files[0];
     if (!file) return;
     setDbLoading(true);
     try {
-      const res = await readSqliteDB(file);
+      var res = await readSqliteDB(file);
       if (res.error) {
         toast(`❌ SQLite: ${res.error}`, "error");
         return;
@@ -6458,7 +6457,7 @@ function ConfigPage({
   // [FIX-BACKUP] Modal de confirmação para restaurar backup
   confirmBackup && /*#__PURE__*/React.createElement(ConfirmModal, {
     titulo: "Restaurar Backup",
-    msg: "Restaurar backup de " + (confirmBackup.item?.key||"").replace("backup_","") + "?\n\nIsso substituirá todos os dados atuais. Esta ação não pode ser desfeita.",
+    msg: "Restaurar backup de " + (confirmBackup.item.key||"").replace("backup_","") + "?\n\nIsso substituirá todos os dados atuais. Esta ação não pode ser desfeita.",
     tipo: "danger",
     dark: dark,
     onOk: () => confirmarRestaurarBackup(confirmBackup.item),
@@ -6662,7 +6661,7 @@ function ConfigPage({
       /*#__PURE__*/React.createElement("div", null,
         /*#__PURE__*/React.createElement("div", { style: { fontSize: 13, fontWeight: 600, color: tc } }, item.key.replace("backup_","")),
         /*#__PURE__*/React.createElement("div", { style: { fontSize: 11, color: "#94a3b8" } },
-          (item.value?.processos?.length || 0), " processos · ", (item.value?.historico?.length || 0), " histórico")
+          (item.value.processos.length || 0), " processos · ", (item.value.historico.length || 0), " histórico")
       ),
       /*#__PURE__*/React.createElement("button", {
         onClick: () => handleRestaurarBackup(item),
@@ -6784,39 +6783,39 @@ function ConfigPage({
 
 // ─── [v4.0] ETag — polling inteligente ───────────────────────────────────────
 // Grava _versao_banco a cada save; polling verifica antes de recarregar tudo
-let _versaoLocal = null;
+var _versaoLocal = null;
 
 async function _incrementarVersao() {
   try {
-    const atual = (await ST.get("_versao_banco")) || 0;
+    var atual = (await ST.get("_versao_banco")) || 0;
     await _sbFetch("POST", "_versao_banco", JSON.stringify(Number(atual) + 1));
     _versaoLocal = Number(atual) + 1;
-  } catch {}
+  } catch(e){}
 }
 
 async function _versaoBancoCambou() {
   if (!_sbReady) return true;
   try {
-    const raw = await _sbFetch("GET", "_versao_banco");
-    const remota = raw !== null ? JSON.parse(raw) : 0;
+    var raw = await _sbFetch("GET", "_versao_banco");
+    var remota = raw !== null ? JSON.parse(raw) : 0;
     if (remota !== _versaoLocal) { _versaoLocal = remota; return true; }
     return false;
-  } catch { return true; }
+  } catch(e){ return true; }
 }
 
 // ─── [G-S2] Backup automático semanal ────────────────────────────────────────
 async function verificarEFazerBackup(processos, historico) {
   try {
-    const hoje = new Date();
-    const ehSegunda = hoje.getDay() === 1; // 0=dom, 1=seg
+    var hoje = new Date();
+    var ehSegunda = hoje.getDay() === 1; // 0=dom, 1=seg
     if (!ehSegunda) return;
-    const chaveBackup = `backup_${hoje.toISOString().slice(0,10)}`;
-    const jaFez = await ST.get(chaveBackup);
+    var chaveBackup = `backup_${hoje.toISOString().slice(0,10)}`;
+    var jaFez = await ST.get(chaveBackup);
     if (jaFez) return; // já fez backup hoje
-    const snapshot = { processos, historico, ts: hoje.toISOString(), v: "3.5" };
+    var snapshot = { processos, historico, ts: hoje.toISOString(), v: "3.5" };
     await ST.set(chaveBackup, snapshot);
     // Mantém apenas 4 backups — remove o mais antigo
-    const backups = await ST.list("backup_");
+    var backups = await ST.list("backup_");
     if (backups.length > 4) {
       backups.sort((a,b) => a.key.localeCompare(b.key));
       await ST.del(backups[0].key);
@@ -6827,49 +6826,49 @@ async function verificarEFazerBackup(processos, historico) {
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 function App() {
-  const [user, setUser] = useState(null);
-  const [sbOnline, setSbOnline] = useState(_sbLive); // [FIX-G] React state mirrors _sbLive for re-renders
-  const [pendentesAtrasados, setPendentesAtrasados] = useState([]); // [G-R3]
-  const [processos, setProcessos] = useState([]);
-  const [historico, setHistorico] = useState([]);
-  const [orgaosConfig, setOrgaosConfig] = useState({});
-  const [appConfig, setAppConfig] = useState({
+  var [user, setUser] = useState(null);
+  var [sbOnline, setSbOnline] = useState(_sbLive); // [FIX-G] React state mirrors _sbLive for re-renders
+  var [pendentesAtrasados, setPendentesAtrasados] = useState([]); // [G-R3]
+  var [processos, setProcessos] = useState([]);
+  var [historico, setHistorico] = useState([]);
+  var [orgaosConfig, setOrgaosConfig] = useState({});
+  var [appConfig, setAppConfig] = useState({
     controlador: {
       nome: "Thiago Soares Lima",
       cargo: "Controlador Geral",
       portaria: "Portaria 002/2025"
     }
   });
-  const [page, setPage] = useState("processos");
-  const [dark, setDark] = useState(false);
-  const [formPct, setFormPct] = useState(0);
-  const [duplicarData, setDuplicarData] = useState(null);
-  const [editarData, setEditarData] = useState(null);
-  const [showShortcuts, setShowShortcuts] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true); // [J-M1] mobile drawer
+  var [page, setPage] = useState("processos");
+  var [dark, setDark] = useState(false);
+  var [formPct, setFormPct] = useState(0);
+  var [duplicarData, setDuplicarData] = useState(null);
+  var [editarData, setEditarData] = useState(null);
+  var [showShortcuts, setShowShortcuts] = useState(false);
+  var [sidebarOpen, setSidebarOpen] = useState(true); // [J-M1] mobile drawer
   // [FIX9] ConfirmModal global no App (para sair sem salvar)
-  const [appConfirmModal, setAppConfirmModal] = useState(null);
+  var [appConfirmModal, setAppConfirmModal] = useState(null);
   // [FIX11] Indicador de carregamento inicial
-  const [carregando, setCarregando] = useState(true);
-  const [erroRede, setErroRede] = useState("");
+  var [carregando, setCarregando] = useState(true);
+  var [erroRede, setErroRede] = useState("");
   // Âncora de numeração: garante que após importar planilha o próximo nº seja maxPlanilha+1
-  const [importedMaxNum, setImportedMaxNum] = useState(0);
+  var [importedMaxNum, setImportedMaxNum] = useState(0);
   // [FIX-REF] Ref espelho de importedMaxNum — permite onSave/onSaveEdit lerem valor atual
   // sem precisar ser reinseridos nas deps do useCallback (evitaria re-criação a cada save)
-  const importedMaxNumRef = useRef(0);
+  var importedMaxNumRef = useRef(0);
   useEffect(() => { importedMaxNumRef.current = importedMaxNum; }, [importedMaxNum]);
   // [M2] Ref para pausar polling durante modo edição (evita sobrescrever dados editados)
-  const editModeRef = useRef(false);
+  var editModeRef = useRef(false);
   // [FIX6] Timer de sessão — expira após 8h de inatividade
-  const sessaoTimerRef = useRef(null);
-  const reiniciarTimerSessao = useCallback(() => {
+  var sessaoTimerRef = useRef(null);
+  var reiniciarTimerSessao = useCallback(() => {
     if (sessaoTimerRef.current) clearTimeout(sessaoTimerRef.current);
     sessaoTimerRef.current = setTimeout(() => {
       setUser(null);
       toast("⏰ Sessão expirada por inatividade. Faça login novamente.", "warn");
     }, 8 * 60 * 60 * 1000); // 8 horas
   }, []);
-  const {
+  var {
     toasts,
     toast
   } = useToast();
@@ -6892,14 +6891,14 @@ function App() {
   // [FIX6] Reinicia timer a cada interação do usuário
   useEffect(() => {
     if (!user) return;
-    const eventos = ["mousedown", "keydown", "touchstart", "scroll"];
-    const handler = () => reiniciarTimerSessao();
+    var eventos = ["mousedown", "keydown", "touchstart", "scroll"];
+    var handler = () => reiniciarTimerSessao();
     eventos.forEach(e => document.addEventListener(e, handler, { passive: true }));
     return () => eventos.forEach(e => document.removeEventListener(e, handler));
   }, [user, reiniciarTimerSessao]);
 
   // [B1] Zera formPct ao sair de "processos"
-  const handleSetPage = useCallback(p => {
+  var handleSetPage = useCallback(p => {
     // [FIX9] Usa ConfirmModal em vez de window.confirm ao sair sem salvar
     if (p !== "processos" && editModeRef.current) {
       setAppConfirmModal({
@@ -6921,11 +6920,11 @@ function App() {
 
   // [POLL] Carga inicial + sincronização a cada 20s + ao voltar para a aba
   useEffect(() => {
-    const refresh = async (isFirst = false) => {
+    var refresh = async (isFirst = false) => {
       // [M2] Não atualiza se o usuário está editando um processo
       if (editModeRef.current) return;
       try {
-        const [p, h, o, a, n] = await Promise.all([
+        var [p, h, o, a, n] = await Promise.all([
           loadAllProcessos(),
           loadAllHistorico(),
           ST.get("orgaos_config"),
@@ -6940,15 +6939,15 @@ function App() {
         // [G-S2] Verifica se deve fazer backup semanal
         if (isFirst) verificarEFazerBackup(p || [], h || []).catch(()=>{});
         // [G-R3] Calcula processos pendentes há mais de 5 dias úteis
-        const hoje = new Date();
-        const atrasados = (h || []).filter(hh => {
+        var hoje = new Date();
+        var atrasados = (h || []).filter(hh => {
           if (hh["Decisão"]) return false; // já decidido
           if (!hh["_registradoEm"]) return false;
           // _registradoEm: "dd/mm/aaaa, HH:MM:SS"
-          const parts = String(hh["_registradoEm"]).split(", ")[0].split("/");
+          var parts = String(hh["_registradoEm"]).split(", ")[0].split("/");
           if (parts.length < 3) return false;
-          const dt = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
-          const diff = (hoje - dt) / (1000 * 60 * 60 * 24);
+          var dt = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+          var diff = (hoje - dt) / (1000 * 60 * 60 * 24);
           return diff >= 5;
         });
         setPendentesAtrasados(atrasados);
@@ -6958,9 +6957,9 @@ function App() {
           setImportedMaxNum(n);
           // Sincroniza localStorage com o valor do Supabase se for maior
           try {
-            const localN = parseInt(JSON.parse(localStorage.getItem("cgel_processo_next_anchor")||"0"),10)||0;
+            var localN = parseInt(JSON.parse(localStorage.getItem("cgel_processo_next_anchor")||"0"),10)||0;
             if (n > localN) localStorage.setItem("cgel_processo_next_anchor", JSON.stringify(n));
-          } catch {}
+          } catch(e){}
         }
       } catch (err) {
         // [FIX11] Mostra erro explícito se carga inicial falhar
@@ -6972,34 +6971,34 @@ function App() {
     };
     refresh(true); // primeira carga — mostra indicador e erro de rede se necessário
     // [v4.0] ETag: só recarrega se versão mudou — reduz 90% das chamadas
-    const interval = setInterval(async () => {
-      const mudou = await _versaoBancoCambou();
+    var interval = setInterval(async () => {
+      var mudou = await _versaoBancoCambou();
       if (mudou) refresh(false);
     }, 20000); // [M7] 20 s
-    const onVisible = () => { if (document.visibilityState === "visible") refresh(); };
+    var onVisible = () => { if (document.visibilityState === "visible") refresh(); };
     document.addEventListener("visibilitychange", onVisible);
     return () => {
       clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, []);
-  const salvarProcessos = async p => {
+  var salvarProcessos = async p => {
     setProcessos(p);
     await ST.set("processos", p);
   };
-  const salvarHistorico = async h => {
+  var salvarHistorico = async h => {
     setHistorico(h);
     await ST.set("historico", h);
   };
-  const salvarOrgaos = async o => {
+  var salvarOrgaos = async o => {
     setOrgaosConfig(o);
     await ST.set("orgaos_config", o);
   };
-  const onSave = useCallback(async (row, form, user) => {
-    const numSalvo = String(row["NÚMERO DO DOCUMENTO"] || "").trim();
-    const usuario = user?.login || user?.nome || "sistema";
+  var onSave = useCallback(async (row, form, user) => {
+    var numSalvo = String(row["NÚMERO DO DOCUMENTO"] || "").trim();
+    var usuario = user.login || user.nome || "sistema";
     // [G-S1] Operadores só criam — não editam processos existentes
-    const novoItem = {
+    var novoItem = {
       ...row,
       "_tipoKey": form.tipo,
       "_decisao": form.decisao,
@@ -7008,20 +7007,20 @@ function App() {
     };
 
     // [ATOM] Grava processo em chave individual
-    const resPoc = await ST.set(`proc_${numSalvo}`, novoItem);
+    var resPoc = await ST.set(`proc_${numSalvo}`, novoItem);
 
     // ── Âncora de numeração — blindada com localStorage imediato ──
-    const numInt = parseInt(numSalvo, 10);
+    var numInt = parseInt(numSalvo, 10);
     if (!isNaN(numInt) && numInt > 0) {
       // 1. Salva IMEDIATAMENTE no localStorage (síncrono, nunca falha)
       try {
-        const localAtual = parseInt(JSON.parse(localStorage.getItem("cgel_processo_next_anchor")||"0"),10)||0;
+        var localAtual = parseInt(JSON.parse(localStorage.getItem("cgel_processo_next_anchor")||"0"),10)||0;
         if (numInt > localAtual) {
           localStorage.setItem("cgel_processo_next_anchor", JSON.stringify(numInt));
         }
-      } catch {}
+      } catch(e){}
       // 2. Atualiza estado React
-      const currentMaxNum = importedMaxNumRef.current || 0;
+      var currentMaxNum = importedMaxNumRef.current || 0;
       if (numInt > currentMaxNum) {
         setImportedMaxNum(numInt);
         // 3. Persiste no Supabase/ST (async, não bloqueia)
@@ -7030,13 +7029,13 @@ function App() {
     }
 
     // Histórico individual — chave "hist_NUM"
-    const hRow = {
+    var hRow = {
       "Processo": row["NÚMERO DO DOCUMENTO"],
       "Data": dtExt(fmtD(row["DATA"])),
       "Órgão": row["ORGÃO"],
       "Fornecedor": row["FORNECEDOR"],
       "Valor": row["VALOR"],
-      "Tipo": TINFO[form.tipo]?.label || form.tipo,
+      "Tipo": TINFO[form.tipo].label || form.tipo,
       "TipoKey": form.tipo,
       "Decisão": form.decisao === "deferir" ? "DEFERIDO" : "INDEFERIDO",
       "CNPJ": row["CNPJ"] || "",
@@ -7076,7 +7075,7 @@ function App() {
     }).catch(() => {});
 
     // Re-carrega estado completo (reflete todos os usuários)
-    const [p, h] = await Promise.all([loadAllProcessos(), loadAllHistorico()]);
+    var [p, h] = await Promise.all([loadAllProcessos(), loadAllHistorico()]);
     setProcessos(p || []);
     setHistorico(h || []);
 
@@ -7088,19 +7087,19 @@ function App() {
     }
   }, []);
 
-  const onSaveEdit = useCallback(async (row, form, numOriginal, user) => {
-    const numStr = String(numOriginal);
-    const usuario = user?.login || user?.nome || "sistema";
+  var onSaveEdit = useCallback(async (row, form, numOriginal, user) => {
+    var numStr = String(numOriginal);
+    var usuario = user.login || user.nome || "sistema";
     // [G-S1] Apenas admins podem editar processos de outros usuários
-    if (user?.perfil !== "admin") {
+    if (user.perfil !== "admin") {
       // Busca o processo original para verificar dono
-      const procOriginal = processos.find(p => String(p["NÚMERO DO DOCUMENTO"]) === numStr);
+      var procOriginal = processos.find(p => String(p["NÚMERO DO DOCUMENTO"]) === numStr);
       if (procOriginal && procOriginal["_usuario"] && procOriginal["_usuario"] !== usuario) {
         toast("⛔ Sem permissão para editar processo de outro usuário.", "error");
         return;
       }
     }
-    const novoItem = {
+    var novoItem = {
       ...row,
       "_tipoKey": form.tipo,
       "_decisao": form.decisao,
@@ -7110,17 +7109,17 @@ function App() {
     };
 
     // [ATOM] Upsert individual — não sobrescreve outros processos
-    const resProc = await ST.set(`proc_${numStr}`, novoItem);
+    var resProc = await ST.set(`proc_${numStr}`, novoItem);
 
     // ── Âncora de numeração — blindada com localStorage imediato ──
-    const _numEditInt = parseInt(numStr, 10);
+    var _numEditInt = parseInt(numStr, 10);
     if (!isNaN(_numEditInt) && _numEditInt > 0) {
       try {
-        const _localAtualEdit = parseInt(JSON.parse(localStorage.getItem("cgel_processo_next_anchor")||"0"),10)||0;
+        var _localAtualEdit = parseInt(JSON.parse(localStorage.getItem("cgel_processo_next_anchor")||"0"),10)||0;
         if (_numEditInt > _localAtualEdit) {
           localStorage.setItem("cgel_processo_next_anchor", JSON.stringify(_numEditInt));
         }
-      } catch {}
+      } catch(e){}
       if (_numEditInt > (importedMaxNumRef.current||0)) {
         setImportedMaxNum(_numEditInt);
         ST.set("imported_max_num", _numEditInt).catch(()=>{});
@@ -7130,13 +7129,13 @@ function App() {
     // [FIX] Grava hist completo com TODOS os campos atualizados do row.
     // Antes: usava ...histExist que propagava dados antigos (ex: CONTRATO velho)
     // para o hist_* de maior prioridade, sobrescrevendo os dados novos do proc_*.
-    const hRow = {
+    var hRow = {
       "Processo":              row["NÚMERO DO DOCUMENTO"] || "",
       "Data":                  dtExt(fmtD(row["DATA"] || "")),
       "Órgão":                 row["ORGÃO"] || "",
       "Fornecedor":            row["FORNECEDOR"] || "",
       "Valor":                 row["VALOR"] || "",
-      "Tipo":                  TINFO[form.tipo]?.label || form.tipo,
+      "Tipo":                  TINFO[form.tipo].label || form.tipo,
       "TipoKey":               form.tipo,
       "Decisão":               form.decisao === "deferir" ? "DEFERIDO" : "INDEFERIDO",
       "CNPJ":                  row["CNPJ"] || "",
@@ -7178,7 +7177,7 @@ function App() {
     }).catch(() => {});
 
     // Re-carrega estado completo
-    const [p, h] = await Promise.all([loadAllProcessos(), loadAllHistorico()]);
+    var [p, h] = await Promise.all([loadAllProcessos(), loadAllHistorico()]);
     setProcessos(p || []);
     setHistorico(h || []);
 
@@ -7188,32 +7187,32 @@ function App() {
       toast(`⚠️ Processo ${row["NÚMERO DO DOCUMENTO"]} atualizado localmente — verifique Supabase.`, "warn");
     }
   }, []);
-  const handleEditar = useCallback(row => {
+  var handleEditar = useCallback(row => {
     setEditarData(row);
     handleSetPage("processos");
   }, [handleSetPage]);
-  const handleDuplicar = useCallback(row => {
+  var handleDuplicar = useCallback(row => {
     setDuplicarData(row);
     handleSetPage("processos");
   }, [handleSetPage]);
-  const handleGerarPDFBusca = useCallback(async row => {
-    const tipo = row["_tipoKey"] || "padrao";
-    const chk = CHK[tipo] || [];
+  var handleGerarPDFBusca = useCallback(async row => {
+    var tipo = row["_tipoKey"] || "padrao";
+    var chk = CHK[tipo] || [];
     // sits: usa checklist salvo em _sits se houver, senão todos marcados
-    const sitsRaw = row["_sits"] || row["_chks"];
-    const sits = Array.isArray(sitsRaw) && sitsRaw.length === chk.length ? sitsRaw : Array(chk.length).fill(true);
+    var sitsRaw = row["_sits"] || row["_chks"];
+    var sits = Array.isArray(sitsRaw) && sitsRaw.length === chk.length ? sitsRaw : Array(chk.length).fill(true);
     // Detectar decisão: processos têm _decisao, histórico tem "Decisão"
-    const decRaw = row["_decisao"] || row["Decisão"] || "deferir";
-    const isDeferido = decRaw !== "indeferir" && !String(decRaw).toUpperCase().includes("INDE");
+    var decRaw = row["_decisao"] || row["Decisão"] || "deferir";
+    var isDeferido = decRaw !== "indeferir" && !String(decRaw).toUpperCase().includes("INDE");
     // Buscar dados completos do processo na tabela de processos (pode ter mais dados)
-    const procCompleto = processos.find(p => String(p["NÚMERO DO DOCUMENTO"]) === String(row["NÚMERO DO DOCUMENTO"] || row["Processo"] || ""));
-    const r2 = procCompleto || row;
-    const forn2 = r2["FORNECEDOR"] || r2["Fornecedor"] || row["Fornecedor"] || "";
-    const org2 = r2["ORGÃO"] || r2["Órgão"] || row["Órgão"] || "";
+    var procCompleto = processos.find(p => String(p["NÚMERO DO DOCUMENTO"]) === String(row["NÚMERO DO DOCUMENTO"] || row["Processo"] || ""));
+    var r2 = procCompleto || row;
+    var forn2 = r2["FORNECEDOR"] || r2["Fornecedor"] || row["Fornecedor"] || "";
+    var org2 = r2["ORGÃO"] || r2["Órgão"] || row["Órgão"] || "";
     // [FIX] Usa APENAS os dados do processo salvo, sem fallbacks históricos.
     // Fallbacks por fornecedor/órgão podiam sobrescrever campos que o usuário
     // editou e salvou, fazendo o PDF mostrar dados antigos (ex: CONTRATO velho).
-    const d = {
+    var d = {
       processo:    r2["NÚMERO DO DOCUMENTO"] || row["Processo"] || "",
       orgao:       org2,
       secretario:  r2["SECRETARIO"] || "",
@@ -7231,15 +7230,15 @@ function App() {
       tipo_doc:    r2["DOCUMENTO FISCAL"] || "",
       tipo_nf:     r2["TIPO"] || "",
       obs:         r2["_obs"] || "",
-      controlador: appConfig?.controlador || {}
+      controlador: appConfig.controlador || {}
     };
-    const r = await gerarPDF(d, tipo, isDeferido, chk, sits);
+    var r = await gerarPDF(d, tipo, isDeferido, chk, sits);
     if (r.error) {
       toast("❌ PDF: " + r.error, "error");
       return;
     }
-    const url = URL.createObjectURL(r.blob);
-    const a = document.createElement("a");
+    var url = URL.createObjectURL(r.blob);
+    var a = document.createElement("a");
     a.href = url;
     a.download = r.name;
     document.body.appendChild(a);
@@ -7250,7 +7249,7 @@ function App() {
     }, 2000);
     toast("✅ PDF gerado!");
   }, [appConfig, processos]);
-  const handleSync = useCallback(async () => {
+  var handleSync = useCallback(async () => {
     if (!_sbReady) {
       toast("⚠️ Supabase não configurado — dados salvos apenas neste navegador.", "warn");
       return;
@@ -7258,53 +7257,53 @@ function App() {
     toast("🔄 Sincronizando...", "info");
 
     // Carrega dados frescos do banco local/memória
-    const [p, h, o] = await Promise.all([
+    var [p, h, o] = await Promise.all([
       loadAllProcessos(),
       loadAllHistorico(),
       ST.get("orgaos_config")
     ]);
 
     // Envia cada processo individualmente (proc_NUM)
-    const procJobs = (p || []).map(proc => {
-      const num = String(proc["NÚMERO DO DOCUMENTO"] || "").trim();
+    var procJobs = (p || []).map(proc => {
+      var num = String(proc["NÚMERO DO DOCUMENTO"] || "").trim();
       if (!num) return Promise.resolve();
       return ST.set(`proc_${num}`, proc);
     });
 
     // Envia cada histórico individualmente (hist_NUM)
-    const histJobs = (h || []).map(hist => {
-      const num = String(hist["Processo"] || hist["NÚMERO DO DOCUMENTO"] || "").trim();
+    var histJobs = (h || []).map(hist => {
+      var num = String(hist["Processo"] || hist["NÚMERO DO DOCUMENTO"] || "").trim();
       if (!num) return Promise.resolve();
       return ST.set(`hist_${num}`, hist);
     });
 
     // Envia blob de órgãos (pequeno, sem problema de conflito)
-    const orgJob = o ? ST.set("orgaos_config", o) : Promise.resolve();
+    var orgJob = o ? ST.set("orgaos_config", o) : Promise.resolve();
 
     await Promise.all([...procJobs, ...histJobs, orgJob]);
 
     // Recarrega estado com dados confirmados
-    const [pFresh, hFresh] = await Promise.all([loadAllProcessos(), loadAllHistorico()]);
+    var [pFresh, hFresh] = await Promise.all([loadAllProcessos(), loadAllHistorico()]);
     setProcessos(pFresh || []);
     setHistorico(hFresh || []);
 
     setSbOnline(_sbLive);
     toast(`☁️ Sincronizado! ${(p||[]).length} processos · ${(h||[]).length} histórico`, "info");
   }, []);
-  const handleImport = useCallback((rows, lastNum) => {
+  var handleImport = useCallback((rows, lastNum) => {
     // Importa planilha e enriquece processos manuais (campos vazios) com dados do histórico
-    const rowMap = {};
+    var rowMap = {};
     rows.forEach(r => {
       rowMap[String(r["NÚMERO DO DOCUMENTO"])] = r;
     });
-    const fornMap = {};
+    var fornMap = {};
     rows.forEach(r => {
-      const f = String(r["FORNECEDOR"] || "").trim();
+      var f = String(r["FORNECEDOR"] || "").trim();
       if (f) fornMap[f] = r;
     });
-    const enriched = processos.filter(p => !rowMap[String(p["NÚMERO DO DOCUMENTO"])]).map(p => {
-      const forn = String(p["FORNECEDOR"] || "").trim();
-      const ref = fornMap[forn];
+    var enriched = processos.filter(p => !rowMap[String(p["NÚMERO DO DOCUMENTO"])]).map(p => {
+      var forn = String(p["FORNECEDOR"] || "").trim();
+      var ref = fornMap[forn];
       if (!ref) return p;
       return {
         ...p,
@@ -7317,7 +7316,7 @@ function App() {
         "SECRETARIO": p["SECRETARIO"] || ref["SECRETARIO"] || ""
       };
     });
-    const merged = [...rows, ...enriched];
+    var merged = [...rows, ...enriched];
     salvarProcessos(merged);
     // ── Auditoria de numeração ────────────────────────────────────────────────
     // ÂNCORA = lastNum (valor da ÚLTIMA LINHA da planilha, ex: 2591)
@@ -7326,8 +7325,8 @@ function App() {
     // ÂNCORA = lastNum = valor da ÚLTIMA LINHA da planilha (ex: 2591)
     // NÃO usar maiorNumero(rows) pois pode ter valores históricos maiores na planilha
     // lastNum é calculado em importarExcel() percorrendo linha a linha e pegando o último
-    const novaAncora = lastNum || 0;
-    const proximoNum = novaAncora + 1;
+    var novaAncora = lastNum || 0;
+    var proximoNum = novaAncora + 1;
     if (novaAncora > 0) {
       setImportedMaxNum(novaAncora);
       ST.set("imported_max_num", novaAncora);
@@ -7338,21 +7337,21 @@ function App() {
       "info"
     );
   }, [processos, toast]);
-  const handleSyncDB = useCallback(res => {
-    if (res.processos?.length) salvarProcessos(res.processos);
-    if (res.historico?.length) salvarHistorico(res.historico);
+  var handleSyncDB = useCallback(res => {
+    if (res.processos.length) salvarProcessos(res.processos);
+    if (res.historico.length) salvarHistorico(res.historico);
     if (Object.keys(res.orgaosConfig || {}).length) salvarOrgaos(res.orgaosConfig);
   }, []);
 
   // [C4] Histórico truncado check
-  const histTruncado = historico.length >= 1000;
+  var histTruncado = historico.length >= 1000;
   // [C2] Próximo número com auditoria completa:
   // Quando importedMaxNum existe (planilha importada), ele É a fonte da verdade.
   // NÃO usar Math.max com proxNumero(processos) pois a planilha pode ter
   // valores históricos altos (ex: 3095) que inflam o resultado.
-  const nextProcessoNumber = useMemo(() => {
+  var nextProcessoNumber = useMemo(() => {
     // Números de processos cadastrados
-    const manuais = new Set(
+    var manuais = new Set(
       processos
         .map(p => parseInt(String(p["NÚMERO DO DOCUMENTO"] || "").trim(), 10))
         .filter(n => !isNaN(n) && n > 0 && n < 99999)
@@ -7360,24 +7359,24 @@ function App() {
 
     // ── Camada extra: ler âncora salva no localStorage para não regredir ──
     // Garante que mesmo sem Supabase o número nunca volta atrás
-    let localAncora = 0;
+    var localAncora = 0;
     try {
-      const lv = localStorage.getItem("cgel_processo_next_anchor");
-      if (lv !== null) { const n = parseInt(JSON.parse(lv),10); if (!isNaN(n) && n > 0) localAncora = n; }
-    } catch {}
+      var lv = localStorage.getItem("cgel_processo_next_anchor");
+      if (lv !== null) { var n = parseInt(JSON.parse(lv),10); if (!isNaN(n) && n > 0) localAncora = n; }
+    } catch(e){}
 
-    const anchoraEfetiva = Math.max(importedMaxNum, localAncora);
+    var anchoraEfetiva = Math.max(importedMaxNum, localAncora);
 
     if (anchoraEfetiva > 0) {
-      let next = anchoraEfetiva + 1;
+      var next = anchoraEfetiva + 1;
       while (manuais.has(next)) next++;
       return next;
     }
 
     // Sem âncora: usa maior existente + 1
-    const nums = [...manuais];
+    var nums = [...manuais];
     if (!nums.length) return 1;
-    let next = nums.reduce((a,b) => a > b ? a : b, 0) + 1;
+    var next = nums.reduce((a,b) => a > b ? a : b, 0) + 1;
     while (manuais.has(next)) next++;
     return next;
   }, [processos, importedMaxNum]);
@@ -7544,7 +7543,7 @@ sidebarOpen && /*#__PURE__*/React.createElement("div", {
     onGerarPDF: handleGerarPDFBusca,
     onEditar: h => {
       // buscar o processo completo pelo número
-      const proc = processos.find(p => String(p["NÚMERO DO DOCUMENTO"]) === String(h["Processo"]));
+      var proc = processos.find(p => String(p["NÚMERO DO DOCUMENTO"]) === String(h["Processo"]));
       if (proc) {
         handleEditar(proc);
       } else {
@@ -7619,8 +7618,8 @@ sidebarOpen && /*#__PURE__*/React.createElement("div", {
 // Garante sequência sem repetição, pulo ou sobrescrita entre usuários/sessões
 
 // Lock global para evitar corrida entre chamadas simultâneas na mesma aba
-let _protoLock = false;
-let _protoQueue = [];
+var _protoLock = false;
+var _protoQueue = [];
 
 async function _nextProtocoloNum() {
   // Se já há uma operação em andamento, aguarda na fila
@@ -7629,23 +7628,23 @@ async function _nextProtocoloNum() {
   }
   _protoLock = true;
   try {
-    let atual = 0;
+    var atual = 0;
     // 1. Tenta obter do Supabase (fonte primária)
     try {
-      const v = await ST.get("protocolo_seq");
+      var v = await ST.get("protocolo_seq");
       if (v !== null && !isNaN(parseInt(v))) atual = parseInt(v);
-    } catch {}
+    } catch(e){}
     // 2. Compara com localStorage (garante que nunca regride)
     try {
-      const local = localStorage.getItem("cgel_protocolo_seq");
+      var local = localStorage.getItem("cgel_protocolo_seq");
       if (local !== null) {
-        const localNum = parseInt(JSON.parse(local));
+        var localNum = parseInt(JSON.parse(local));
         if (!isNaN(localNum) && localNum > atual) atual = localNum;
       }
-    } catch {}
-    const proximo = atual + 1;
+    } catch(e){}
+    var proximo = atual + 1;
     // 3. Persiste ANTES de retornar (evita que outra chamada pegue o mesmo número)
-    try { localStorage.setItem("cgel_protocolo_seq", JSON.stringify(proximo)); } catch {}
+    try { localStorage.setItem("cgel_protocolo_seq", JSON.stringify(proximo)); } catch(e){}
     // Salva no Supabase; se falhar, localStorage já garantiu a sequência
     ST.set("protocolo_seq", proximo).catch(() => {});
     return proximo;
@@ -7653,7 +7652,7 @@ async function _nextProtocoloNum() {
     _protoLock = false;
     // Libera o próximo da fila
     if (_protoQueue.length > 0) {
-      const next = _protoQueue.shift();
+      var next = _protoQueue.shift();
       next();
     }
   }
@@ -7664,63 +7663,63 @@ async function _nextProtocoloNum() {
 
 // ─── ProtocoloPage ─────────────────────────────────────────────────────────────
 function ProtocoloPage({ historico = [], processos = [], dark, toast, appConfig }) {
-  const bg   = dark ? T.appBgDark    : T.appBg;
-  const card = dark ? T.cardBgDark   : T.cardBg;
-  const bdr  = dark ? T.borderDark   : T.border;
-  const txt  = dark ? T.textMainDark : T.textMain;
+  var bg   = dark ? T.appBgDark    : T.appBg;
+  var card = dark ? T.cardBgDark   : T.cardBg;
+  var bdr  = dark ? T.borderDark   : T.border;
+  var txt  = dark ? T.textMainDark : T.textMain;
 
-  const [modo, setModo]        = React.useState("historico");
-  const [busca, setBusca]      = React.useState("");
-  const [selecionados, setSel] = React.useState([]);
-  const [gerandoPDF, setGer]   = React.useState(false);
-  const [duasVias, setDuasVias]= React.useState(false); // imprimir 2 vias?
+  var [modo, setModo]        = React.useState("historico");
+  var [busca, setBusca]      = React.useState("");
+  var [selecionados, setSel] = React.useState([]);
+  var [gerandoPDF, setGer]   = React.useState(false);
+  var [duasVias, setDuasVias]= React.useState(false); // imprimir 2 vias?
 
   // ── Documento externo (modo manual) ──
-  const docVazio = () => ({
+  var docVazio = () => ({
     _id:           Date.now() + Math.random(),
     descricao:     "",
     nomeRecebedor: "",
     local:         "Governador Edison Lobão – MA",
   });
-  const [docs, setDocs] = React.useState([docVazio()]);
+  var [docs, setDocs] = React.useState([docVazio()]);
 
   // ── helpers ──
-  const parseBRL = v => { const s=String(v||"").replace(/\./g,"").replace(",",".").replace(/[^\d.]/g,""); const n=parseFloat(s); return isNaN(n)?0:n; };
-  const fmtBRL   = v => (typeof v==="number"?v:parseBRL(v)).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
-  const MESES    = ["","janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+  var parseBRL = v => { var s=String(v||"").replace(/\./g,"").replace(",",".").replace(/[^\d.]/g,""); var n=parseFloat(s); return isNaN(n)?0:n; };
+  var fmtBRL   = v => (typeof v==="number"?v:parseBRL(v)).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+  var MESES    = ["","janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
 
   // ── Itens histórico ──
-  const itensHist = React.useMemo(() => historico.map(h => {
-    const proc = processos.find(p => String(p["NÚMERO DO DOCUMENTO"]||"")===String(h["Processo"]||""));
+  var itensHist = React.useMemo(() => historico.map(h => {
+    var proc = processos.find(p => String(p["NÚMERO DO DOCUMENTO"]||"")===String(h["Processo"]||""));
     return {
       _id:       String(h["Processo"]||h["NÚMERO DO DOCUMENTO"]||Math.random()),
       processo:  h["Processo"]||h["NÚMERO DO DOCUMENTO"]||"",
       orgao:     h["Órgão"]||h["ORGÃO"]||"",
       fornecedor:h["Fornecedor"]||h["FORNECEDOR"]||"",
-      cnpj:      h["CNPJ"]||proc?.["CNPJ"]||"",
-      nf:        h["Nº"]||proc?.["Nº"]||"",
+      cnpj:      h["CNPJ"]||proc["CNPJ"]||"",
+      nf:        h["Nº"]||proc["Nº"]||"",
       valor:     h["Valor"]||h["VALOR"]||"",
       data:      h["Data"]||h["DATA"]||"",
-      objeto:    h["OBJETO"]||proc?.["OBJETO"]||"",
+      objeto:    h["OBJETO"]||proc["OBJETO"]||"",
     };
   }), [historico, processos]);
 
-  const filtrados = React.useMemo(() => {
+  var filtrados = React.useMemo(() => {
     if (!busca.trim()) return itensHist;
-    const q = busca.toLowerCase();
+    var q = busca.toLowerCase();
     return itensHist.filter(i =>
-      i.processo.toLowerCase().includes(q)||
-      i.orgao.toLowerCase().includes(q)||
-      i.fornecedor.toLowerCase().includes(q)||
-      i.nf.toLowerCase().includes(q)
+      (i.processo || "").toString().toLowerCase().includes(q)||
+      (i.orgao || "").toString().toLowerCase().includes(q)||
+      (i.fornecedor || "").toString().toLowerCase().includes(q)||
+      (i.nf || "").toString().toLowerCase().includes(q)
     );
   }, [itensHist, busca]);
 
-  const toggleSel   = id => setSel(p => p.includes(id)?p.filter(x=>x!==id):[...p,id]);
-  const toggleTodos = () => setSel(selecionados.length===filtrados.length?[]:filtrados.map(i=>i._id));
-  const updDoc      = (id,campo,val) => setDocs(p=>p.map(d=>d._id===id?{...d,[campo]:val}:d));
-  const addDoc      = () => setDocs(p=>[...p,docVazio()]);
-  const delDoc      = id => setDocs(p=>p.filter(d=>d._id!==id));
+  var toggleSel   = id => setSel(p => p.includes(id)?p.filter(x=>x!==id):[...p,id]);
+  var toggleTodos = () => setSel(selecionados.length===filtrados.length?[]:filtrados.map(i=>i._id));
+  var updDoc      = (id,campo,val) => setDocs(p=>p.map(d=>d._id===id?{...d,[campo]:val}:d));
+  var addDoc      = () => setDocs(p=>[...p,docVazio()]);
+  var delDoc      = id => setDocs(p=>p.filter(d=>d._id!==id));
 
   // ════════════════════════════════════════════════════════════════════════════
   // FUNÇÕES PDF — Cabeçalho e Rodapé IDÊNTICOS ao padrão do sistema
@@ -7728,9 +7727,9 @@ function ProtocoloPage({ historico = [], processos = [], dark, toast, appConfig 
 
   // Cabeçalho padrão (mesmo do gerarPDF individual e relatório mensal)
   function _cabPDF(doc, W) {
-    const bW=30.7, bH=22.5, bX=(W-bW)/2, bY=8;
-    if (window.BRASAO_B64) { try { doc.addImage(window.BRASAO_B64,"PNG",bX,bY,bW,bH); } catch {} }
-    let y = bY + bH + 4.5;
+    var bW=30.7, bH=22.5, bX=(W-bW)/2, bY=8;
+    if (window.BRASAO_B64) { try { doc.addImage(window.BRASAO_B64,"PNG",bX,bY,bW,bH); } catch(e){} }
+    var y = bY + bH + 4.5;
     doc.setFont("helvetica","bold"); doc.setFontSize(11); doc.setTextColor(0,0,0);
     doc.text("ESTADO DO MARANHÃO",                              W/2, y, {align:"center"}); y+=5;
     doc.text("PREFEITURA MUNICIPAL DE GOVERNADOR EDISON LOBÃO", W/2, y, {align:"center"}); y+=5;
@@ -7742,8 +7741,8 @@ function ProtocoloPage({ historico = [], processos = [], dark, toast, appConfig 
 
   // Rodapé padrão em todas as páginas (igual ao relatório mensal)
   function _rodapePDF(doc, numStr, ano, hoje, totalPgs) {
-    const W=210;
-    for(let pg=1;pg<=totalPgs;pg++){
+    var W=210;
+    for(var pg=1;pg<=totalPgs;pg++){
       doc.setPage(pg);
       doc.setFontSize(7); doc.setFont("helvetica","normal"); doc.setTextColor(150,150,150);
       doc.text(FOOTER_TXT, W/2, 291, {align:"center"});
@@ -7753,26 +7752,26 @@ function ProtocoloPage({ historico = [], processos = [], dark, toast, appConfig 
   }
 
   // ── PDF — Processos do Sistema ──────────────────────────────────────────────
-  const gerarPDFSistema = async () => {
-    const itens = itensHist.filter(i=>selecionados.includes(i._id));
+  var gerarPDFSistema = async () => {
+    var itens = itensHist.filter(i=>selecionados.includes(i._id));
     if (!itens.length) { toast("Selecione ao menos um processo.","warn"); return; }
     setGer(true);
     try {
-      const numProto = await _nextProtocoloNum();
-      const { jsPDF } = await loadJsPDF();
-      const doc = new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
-      const W=210, M=19;
-      const ctrl = appConfig?.controlador||{};
-      const d = new Date();
-      const hoje = `${String(d.getDate()).padStart(2,"0")} de ${MESES[d.getMonth()+1]} de ${d.getFullYear()}`;
-      const ano  = d.getFullYear();
-      const numStr = String(numProto).padStart(5,"0");
+      var numProto = await _nextProtocoloNum();
+      var { jsPDF } = await loadJsPDF();
+      var doc = new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
+      var W=210, M=19;
+      var ctrl = appConfig.controlador||{};
+      var d = new Date();
+      var hoje = `${String(d.getDate()).padStart(2,"0")} de ${MESES[d.getMonth()+1]} de ${d.getFullYear()}`;
+      var ano  = d.getFullYear();
+      var numStr = String(numProto).padStart(5,"0");
 
       // ── Função interna para desenhar uma via completa ──
-      const desenharVia = (doc, isSegundaVia) => {
+      var desenharVia = (doc, isSegundaVia) => {
         if (isSegundaVia) doc.addPage();
 
-        let y = _cabPDF(doc, W) + 6;
+        var y = _cabPDF(doc, W) + 6;
 
         // Título + número
         doc.setFontSize(13); doc.setFont("helvetica","bold"); doc.setTextColor(0,0,0);
@@ -7791,7 +7790,7 @@ function ProtocoloPage({ historico = [], processos = [], dark, toast, appConfig 
         doc.setLineWidth(0.3); doc.line(M, y, W-M, y); y+=4;
 
         // Tabela com auto-ajuste de altura por conteúdo
-        const cols=[
+        var cols=[
           {label:"Nº Processo", w:20, key:"processo"},
           {label:"Órgão",       w:38, key:"orgao"},
           {label:"Fornecedor",  w:40, key:"fornecedor"},
@@ -7799,39 +7798,39 @@ function ProtocoloPage({ historico = [], processos = [], dark, toast, appConfig 
           {label:"Valor",       w:26, key:"valor"},
           {label:"Data",        w:22, key:"data"},
         ];
-        const LINHA_H = 4.2;
-        const ROW_PAD = 3.5;
-        const ROW_MIN = 7;
-        const tHeader = yy => {
+        var LINHA_H = 4.2;
+        var ROW_PAD = 3.5;
+        var ROW_MIN = 7;
+        var tHeader = yy => {
           doc.setFillColor(0,96,0); doc.setTextColor(255,255,255);
           doc.setFont("helvetica","bold"); doc.setFontSize(7.5);
           doc.rect(M,yy,W-2*M,ROW_MIN,"F");
-          let cx=M; cols.forEach(c=>{ doc.text(c.label,cx+1,yy+4.8,{maxWidth:c.w-2}); cx+=c.w; });
+          var cx=M; cols.forEach(c=>{ doc.text(c.label,cx+1,yy+4.8,{maxWidth:c.w-2}); cx+=c.w; });
           doc.setTextColor(0,0,0);
           return yy+ROW_MIN;
         };
         y = tHeader(y);
         doc.setTextColor(0,0,0); doc.setFont("helvetica","normal"); doc.setFontSize(7);
         itens.forEach((item,idx)=>{
-          const v={processo:String(item.processo||""),orgao:String(item.orgao||""),fornecedor:String(item.fornecedor||""),nf:String(item.nf||""),valor:item.valor?fmtBRL(item.valor):"",data:String(item.data||"")};
-          const linhasPorCol = cols.map(c => doc.splitTextToSize(v[c.key]||"—", c.w-2).length);
-          const maxLinhas = Math.max(...linhasPorCol);
-          const rowH = Math.max(ROW_MIN, maxLinhas * LINHA_H + ROW_PAD);
+          var v={processo:String(item.processo||""),orgao:String(item.orgao||""),fornecedor:String(item.fornecedor||""),nf:String(item.nf||""),valor:item.valor?fmtBRL(item.valor):"",data:String(item.data||"")};
+          var linhasPorCol = cols.map(c => doc.splitTextToSize(v[c.key]||"—", c.w-2).length);
+          var maxLinhas = Math.max(...linhasPorCol);
+          var rowH = Math.max(ROW_MIN, maxLinhas * LINHA_H + ROW_PAD);
           if(y+rowH>258){ doc.addPage(); y=_cabPDF(doc,W)+6; y=tHeader(y); doc.setFont("helvetica","normal"); doc.setFontSize(7); }
           if(idx%2===0){ doc.setFillColor(240,248,240); doc.rect(M,y,W-2*M,rowH,"F"); }
-          let cx=M;
+          var cx=M;
           cols.forEach(c=>{
-            const linhas = doc.splitTextToSize(v[c.key]||"—", c.w-2);
+            var linhas = doc.splitTextToSize(v[c.key]||"—", c.w-2);
             doc.text(linhas, cx+1, y+4.2);
             cx+=c.w;
           });
           doc.setDrawColor(180,210,180); doc.setLineWidth(0.1);
-          let lx=M; cols.forEach(c=>{lx+=c.w; doc.line(lx,y,lx,y+rowH);}); doc.line(M,y,M,y+rowH); doc.line(W-M,y,W-M,y+rowH); doc.line(M,y+rowH,W-M,y+rowH);
+          var lx=M; cols.forEach(c=>{lx+=c.w; doc.line(lx,y,lx,y+rowH);}); doc.line(M,y,M,y+rowH); doc.line(W-M,y,W-M,y+rowH); doc.line(M,y+rowH,W-M,y+rowH);
           y+=rowH;
         });
 
         // Total
-        const total=itens.reduce((a,i)=>a+parseBRL(i.valor||"0"),0);
+        var total=itens.reduce((a,i)=>a+parseBRL(i.valor||"0"),0);
         y+=4; doc.setFont("helvetica","bold"); doc.setFontSize(9);
         doc.text(`VALOR TOTAL: ${fmtBRL(total)}`, W-M, y, {align:"right"}); y+=14;
 
@@ -7840,9 +7839,9 @@ function ProtocoloPage({ historico = [], processos = [], dark, toast, appConfig 
         doc.setFont("helvetica","normal"); doc.setFontSize(10);
         doc.text(`Governador Edison Lobão/MA, ${hoje}`, W-M, y, {align:"right"}); y+=12;
         // Colunas de assinatura
-        const xLeft = M + (W-2*M)*0.25;  // centro da coluna esquerda
-        const xRight= M + (W-2*M)*0.75;  // centro da coluna direita
-        const sigW  = 44;
+        var xLeft = M + (W-2*M)*0.25;  // centro da coluna esquerda
+        var xRight= M + (W-2*M)*0.75;  // centro da coluna direita
+        var sigW  = 44;
         // Linha esquerda — Controlador
         doc.setLineWidth(0.4);
         doc.line(xLeft-sigW/2, y, xLeft+sigW/2, y);
@@ -7876,28 +7875,28 @@ function ProtocoloPage({ historico = [], processos = [], dark, toast, appConfig 
   };
 
   // ── PDF — Recebimento de Documento Externo ─────────────────────────────────
-  const gerarPDFManual = async () => {
-    const itens = docs.filter(d=>d.descricao.trim());
+  var gerarPDFManual = async () => {
+    var itens = docs.filter(d=>d.descricao.trim());
     if (!itens.length) { toast("Descreva ao menos um documento.","warn"); return; }
     setGer(true);
     try {
-      const numProto = await _nextProtocoloNum();
-      const { jsPDF } = await loadJsPDF();
-      const doc = new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
-      const W=210, M=19;
-      const ctrl = appConfig?.controlador||{};
-      const d = new Date();
-      const hoje = `${String(d.getDate()).padStart(2,"0")} de ${MESES[d.getMonth()+1]} de ${d.getFullYear()}`;
-      const ano  = d.getFullYear();
-      const numStr = String(numProto).padStart(5,"0");
-      const nomeReceb = itens[0]?.nomeRecebedor || ctrl.nome || "Controlador(a) Geral";
-      const localReceb= itens[0]?.local || "Governador Edison Lobão – MA";
+      var numProto = await _nextProtocoloNum();
+      var { jsPDF } = await loadJsPDF();
+      var doc = new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
+      var W=210, M=19;
+      var ctrl = appConfig.controlador||{};
+      var d = new Date();
+      var hoje = `${String(d.getDate()).padStart(2,"0")} de ${MESES[d.getMonth()+1]} de ${d.getFullYear()}`;
+      var ano  = d.getFullYear();
+      var numStr = String(numProto).padStart(5,"0");
+      var nomeReceb = itens[0].nomeRecebedor || ctrl.nome || "Controlador(a) Geral";
+      var localReceb= itens[0].local || "Governador Edison Lobão – MA";
 
       // ── Função interna para uma via do protocolo de recebimento ──
-      const desenharViaRecebimento = (doc, isSegundaVia) => {
+      var desenharViaRecebimento = (doc, isSegundaVia) => {
         if (isSegundaVia) doc.addPage();
 
-        let y = _cabPDF(doc, W) + 6;
+        var y = _cabPDF(doc, W) + 6;
 
         // Título
         doc.setFontSize(13); doc.setFont("helvetica","bold"); doc.setTextColor(0,0,0);
@@ -7918,8 +7917,8 @@ function ProtocoloPage({ historico = [], processos = [], dark, toast, appConfig 
         // Blocos de documento
         itens.forEach((item,idx)=>{
           if(y>240){ doc.addPage(); y=_cabPDF(doc,W)+6; }
-          const linhas = doc.splitTextToSize(item.descricao||"—", W-2*M-6);
-          const boxH = Math.max(20, 10 + linhas.length*5.5);
+          var linhas = doc.splitTextToSize(item.descricao||"—", W-2*M-6);
+          var boxH = Math.max(20, 10 + linhas.length*5.5);
           doc.setFillColor(idx%2===0?245:252, idx%2===0?251:252, idx%2===0?245:252);
           doc.setDrawColor(0,96,0); doc.setLineWidth(0.35);
           doc.rect(M, y, W-2*M, boxH, "FD");
@@ -7939,7 +7938,7 @@ function ProtocoloPage({ historico = [], processos = [], dark, toast, appConfig 
         doc.text(`${localReceb}, ${hoje}`, W-M, y, {align:"right"}); y+=14;
 
         // Assinatura — igual ao padrão do sistema (centralizada)
-        const xC=W/2;
+        var xC=W/2;
         doc.setLineWidth(0.4); doc.line(xC-45,y,xC+45,y); y+=5;
         doc.setFont("helvetica","bold"); doc.setFontSize(10);
         doc.text(nomeReceb, xC, y, {align:"center"}); y+=5;
@@ -7959,8 +7958,8 @@ function ProtocoloPage({ historico = [], processos = [], dark, toast, appConfig 
   };
 
   // ── Estilos ──
-  const inp = {background:dark?"#1a3a28":"#fff",border:"1px solid "+bdr,borderRadius:7,color:txt,padding:"6px 10px",fontSize:12,width:"100%",boxSizing:"border-box"};
-  const btn = (bg2,col="#fff")=>({background:bg2,color:col,border:"none",borderRadius:8,padding:"8px 18px",fontWeight:700,fontSize:12.5,cursor:"pointer"});
+  var inp = {background:dark?"#1a3a28":"#fff",border:"1px solid "+bdr,borderRadius:7,color:txt,padding:"6px 10px",fontSize:12,width:"100%",boxSizing:"border-box"};
+  var btn = (bg2,col="#fff")=>({background:bg2,color:col,border:"none",borderRadius:8,padding:"8px 18px",fontWeight:700,fontSize:12.5,cursor:"pointer"});
 
   // ── Render ──
   return /*#__PURE__*/React.createElement("div",{style:{flex:1,background:bg,minHeight:"100vh",padding:"28px 28px 60px"}},
@@ -7994,7 +7993,7 @@ function ProtocoloPage({ historico = [], processos = [], dark, toast, appConfig 
         filtrados.length===0
           ? /*#__PURE__*/React.createElement("div",{style:{padding:32,textAlign:"center",color:txt,opacity:.5}},"Nenhum registro no histórico.")
           : filtrados.map((item,idx)=>{
-              const sel=selecionados.includes(item._id);
+              var sel=selecionados.includes(item._id);
               return /*#__PURE__*/React.createElement("div",{
                 key:item._id, onClick:()=>toggleSel(item._id),
                 style:{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",cursor:"pointer",userSelect:"none",
@@ -8057,7 +8056,7 @@ function ProtocoloPage({ historico = [], processos = [], dark, toast, appConfig 
       /*#__PURE__*/React.createElement("button",{
         onClick:modo==="historico"?gerarPDFSistema:gerarPDFManual,
         disabled:gerandoPDF,
-        style:{...btn(MUN.green),fontSize:14,padding:"10px 28px",opacity:gerandoPDF?.6:1}
+        style:{...btn(MUN.green),fontSize:14,padding:"10px 28px",opacity:gerandoPDF?0.6:1}
       },gerandoPDF?"⏳ Gerando PDF...":"🖨️ Gerar Protocolo PDF"),
       // Checkbox 2 vias
       /*#__PURE__*/React.createElement("label",{
