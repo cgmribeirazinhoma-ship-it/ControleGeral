@@ -20,7 +20,7 @@
         }
         @keyframes spin { to { transform: rotate(360deg); } }
         #error-screen { display: none; padding: 20px; color: #fff; text-align: center; position: fixed; inset: 0; background: #450a0a; z-index: 10000; overflow-y: auto; }
-        #error-screen b { color: #fca5a5; display: block; margin: 15px 0; font-family: monospace; font-size: 14px; }
+        #error-screen b { color: #fca5a5; display: block; margin: 10px 0; font-family: monospace; font-size: 14px; }
         .btn {
             margin: 5px; padding: 12px 24px; background: #EFD103; color: #000;
             border: none; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 14px;
@@ -34,31 +34,32 @@
         <div class="spinner"></div>
         <div style="font-weight: bold; letter-spacing: 0.05em; font-size: 18px;">CONTROLE GERAL</div>
         <div style="font-size: 13px; opacity: 0.8; margin-top: 5px;">Carregando sistema...</div>
-        <div id="log">Iniciando logs...</div>
+        <div id="log">Aguardando scripts...</div>
     </div>
 
     <div id="error-screen">
         <div style="font-size: 40px; margin-bottom: 10px;">⚠️</div>
         <h3 style="margin: 0;">Erro ao carregar o sistema</h3>
         <p style="opacity: 0.8; font-size: 14px;">Não foi possível inicializar a aplicação.</p>
-        <b id="error-msg">Aguardando detalhes...</b>
-        <div style="margin: 15px 0;">
+        <b id="error-msg">Erro desconhecido</b>
+        <div style="margin: 20px 0;">
             <button class="btn" onclick="location.reload()">Tentar novamente</button>
             <button class="btn btn-sec" onclick="clearAndReload()">Limpar Cache</button>
         </div>
-        <div id="log-error" style="font-family:monospace; font-size:10px; text-align:left; background:rgba(0,0,0,0.3); padding:10px; border-radius:5px; max-height: 200px; overflow-y: auto;"></div>
+        <div id="log-error" style="font-family:monospace; font-size:10px; text-align:left; background:rgba(0,0,0,0.3); padding:10px; border-radius:5px;"></div>
     </div>
 
     <div id="root"></div>
 
     <script>
-        window.AppMounted = false;
+        var logs = [];
         function addLog(msg) {
             console.log('[Init]', msg);
+            logs.push(msg);
             var el = document.getElementById('log');
-            if (el) el.textContent += '\n> ' + msg;
+            if (el) el.textContent = logs.join('\n> ');
             var elErr = document.getElementById('log-error');
-            if (elErr) elErr.textContent += '\n> ' + msg;
+            if (elErr) elErr.textContent = logs.join('\n> ');
         }
         function showError(msg) {
             addLog('ERRO: ' + msg);
@@ -86,27 +87,24 @@
             showError(msg + ' (Linha: ' + line + ')');
             return false;
         };
-        // Timeout de carga
-        setTimeout(function() {
-            if (!window.AppMounted) {
-                showError('O sistema demorou muito para responder. Verifique sua conexão ou limpe o cache.');
-            }
-        }, 15000);
     </script>
 
+    <!-- Essential Libraries (Synchronous) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" onload="addLog('React OK')" onerror="showError('Falha React')"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" onload="addLog('ReactDOM OK')" onerror="showError('Falha ReactDOM')"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" onload="addLog('XLSX OK')"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" onload="addLog('jsPDF OK')"></script>
     <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js" onload="addLog('docx OK')"></script>
 
+    <!-- Application Logic -->
     <script src="brasao.js" onload="addLog('Brasao OK')" onerror="showError('Falha brasao.js')"></script>
-    <script src="app.js" onload="addLog('App Script OK')" onerror="showError('Falha app.js')"></script>
+    <script src="app.js?v=4.9.1" onload="addLog('App Script OK')" onerror="showError('Falha app.js')"></script>
 
     <script>
+        window.AppMounted = false;
         function mountApp() {
             if (window.AppMounted) return;
-            addLog('Montando App...');
+            addLog('Iniciando montagem...');
             try {
                 if (window.App && window.ReactDOM && window.React) {
                     var rootElement = document.getElementById('root');
@@ -121,28 +119,26 @@
                             document.body.style.overflow = 'auto';
                         }, 1000);
                     } else {
-                        showError('Elemento #root ausente');
+                        showError('Elemento #root não encontrado');
                     }
                 } else {
                     var missing = [];
                     if (!window.React) missing.push('React');
                     if (!window.ReactDOM) missing.push('ReactDOM');
-                    if (!window.App) missing.push('App');
+                    if (!window.App) missing.push('App (lógica)');
                     showError('Faltando: ' + missing.join(', '));
                 }
             } catch (err) {
-                showError('Erro: ' + err.message);
+                showError('Erro execução: ' + err.message);
             }
         }
 
-        if (document.readyState === 'complete') mountApp();
-        else window.addEventListener('load', mountApp);
-
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
+        window.addEventListener('load', function() {
+            setTimeout(mountApp, 200);
+            if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.register('sw.js').then(function() { addLog('PWA OK'); }).catch(function(e) { console.warn('PWA Error:', e); });
-            });
-        }
+            }
+        });
     </script>
 </body>
 </html>

@@ -1,6 +1,5 @@
-var CACHE = 'cgel-v4.5';
+var CACHE = 'cgel-v4.9';
 var ASSETS = [
-  './',
   'index.html',
   'app.js',
   'brasao.js',
@@ -10,11 +9,10 @@ var ASSETS = [
 self.addEventListener('install', function(e) {
   e.waitUntil(
     caches.open(CACHE).then(function(cache) {
-      // Try to add all, but don't fail entire install if one fails
-      return Promise.all(ASSETS.map(function(url) {
-        return cache.add(url).catch(function(err) { console.warn('Fail asset:', url); });
-      }));
-    }).then(function() { return self.skipWaiting(); })
+      return cache.addAll(ASSETS);
+    }).then(function() {
+      return self.skipWaiting();
+    })
   );
 });
 
@@ -22,7 +20,9 @@ self.addEventListener('activate', function(e) {
   e.waitUntil(
     caches.keys().then(function(keys) {
       return Promise.all(keys.filter(function(k) { return k !== CACHE; }).map(function(k) { return caches.delete(k); }));
-    }).then(function() { return self.clients.claim(); })
+    }).then(function() {
+      return self.clients.claim();
+    })
   );
 });
 

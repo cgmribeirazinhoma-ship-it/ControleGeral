@@ -1,6 +1,5 @@
 {
   "version": 2,
-  "buildCommand": "echo Skip build",
   "outputDirectory": ".",
   "rewrites": [
     { "source": "/((?!.*\\.).*)", "destination": "/index.html" }
@@ -11,12 +10,6 @@
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" },
         { "key": "x-vercel-skip-toolbar", "value": "1" }
-      ]
-    },
-    {
-      "source": "/(app|brasao|sw)\\.js",
-      "headers": [
-        { "key": "Content-Type", "value": "application/javascript" }
       ]
     }
   ]
