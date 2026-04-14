@@ -75,7 +75,7 @@
 */
 
 // ─── React hooks — extraídos do UMD global para uso sem prefixo ───────────────
-var useState = function() { return React.useState.apply(React, arguments); }; var useEffect = function() { return React.useEffect.apply(React, arguments); }; var useCallback = function() { return React.useCallback.apply(React, arguments); }; var useMemo = function() { return React.useMemo.apply(React, arguments); }; var useRef = function() { return React.useRef.apply(React, arguments); };
+var { useState, useEffect, useCallback, useMemo, useRef } = React;
 // SheetJS (Excel) — carregado via CDN como window.XLSX (não redeclarar aqui)
 // XLSX está disponível como variável global via CDN no index.html
 
@@ -959,9 +959,9 @@ async function loadUsers() {
     // Preserva outros usuários se existirem, apenas garante admin válido
     var admExistente = (u && u.admin) ? u.admin : null;
     u = Object.assign({}, u || {}, {
-      admin: admExistente && u && u.__schemaV === USERS_SCHEMA_V ? admExistente : {
+      admin: (admExistente && u && u.__schemaV === USERS_SCHEMA_V) ? admExistente : {
         senha: hash,
-        salt,
+        salt: salt,
         nome: "Administrador",
         perfil: "admin",
         ativo: true
@@ -1428,7 +1428,7 @@ async function gerarRelatorioPDF(processos, mesAno, appConfig) {
     else if (p["_decisao"] === "indeferir") porOrgao[o].indef++;
   });
   var totalGeral = filtrados.reduce((a,p) => a + parseBRL(p["VALOR"]), 0);
-  var ctrl = appConfig.controlador || {};
+  var ctrl = (appConfig && appConfig.controlador) || {};
 
   // ── Cabeçalho ──
   if (window.BRASAO_B64) {
@@ -3816,7 +3816,7 @@ function NovoProcessoPage({
       tipo_doc:    tipDoc,
       tipo_nf:     tipNf,
       obs:         form.obs,
-      controlador: appConfig.controlador || {}
+      controlador: (appConfig && appConfig.controlador) || {}
     };
   };
   var handleGerarPDF = async () => {    if (loading) return;
@@ -5876,7 +5876,7 @@ function UsuariosPage({
     }
     setLoading(true);
     try {
-      var salt = _generateUUID().replace(/-/g, "").slice(0, 32);
+      var salt = crypto.randomUUID().replace(/-/g, "").slice(0, 32);
       var hash = await hashSenha(salt, novaSenha);
       var updated = {
         ...users,
@@ -5919,7 +5919,7 @@ function UsuariosPage({
     setModalSenha({ login });
   };
   var confirmarResetSenha = async (login, ns) => {
-    var salt = _generateUUID().replace(/-/g, "").slice(0, 32);
+    var salt = crypto.randomUUID().replace(/-/g, "").slice(0, 32);
     var hash = await hashSenha(salt, ns.trim());
     var updated = {
       ...users,
@@ -6256,7 +6256,7 @@ function ControladorForm({ appConfig, setAppConfig, dark, toast }) {
 
   // Sincronizar se appConfig mudar externamente
   useEffect(() => {
-    var c = appConfig.controlador || {};
+    var c = (appConfig && appConfig.controlador) || {};
     setNome(c.nome     || "");
     setCargo(c.cargo   || "");
     setPortaria(c.portaria || "");
@@ -7696,11 +7696,11 @@ function ProtocoloPage({ historico = [], processos = [], dark, toast, appConfig 
       processo:  h["Processo"]||h["NÚMERO DO DOCUMENTO"]||"",
       orgao:     h["Órgão"]||h["ORGÃO"]||"",
       fornecedor:h["Fornecedor"]||h["FORNECEDOR"]||"",
-      cnpj:      h["CNPJ"]||proc["CNPJ"]||"",
-      nf:        h["Nº"]||proc["Nº"]||"",
+      cnpj:      h["CNPJ"]||(proc && proc["CNPJ"])||"",
+      nf:        h["Nº"]||(proc && proc["Nº"])||"",
       valor:     h["Valor"]||h["VALOR"]||"",
       data:      h["Data"]||h["DATA"]||"",
-      objeto:    h["OBJETO"]||proc["OBJETO"]||"",
+      objeto:    h["OBJETO"]||(proc && proc["OBJETO"])||"",
     };
   }), [historico, processos]);
 
@@ -7761,7 +7761,7 @@ function ProtocoloPage({ historico = [], processos = [], dark, toast, appConfig 
       var { jsPDF } = await loadJsPDF();
       var doc = new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
       var W=210, M=19;
-      var ctrl = appConfig.controlador||{};
+      var ctrl = (appConfig && appConfig.controlador)||{};
       var d = new Date();
       var hoje = `${String(d.getDate()).padStart(2,"0")} de ${MESES[d.getMonth()+1]} de ${d.getFullYear()}`;
       var ano  = d.getFullYear();

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Controle Geral - Prefeitura Gov. Edison Lobão</title>
-    <link rel="manifest" href="manifest.json">
+    <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#006000">
     <style>
         body { margin: 0; background: #006000; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; overflow: hidden; }
@@ -34,7 +34,7 @@
         <div class="spinner"></div>
         <div style="font-weight: bold; letter-spacing: 0.05em; font-size: 18px;">CONTROLE GERAL</div>
         <div style="font-size: 13px; opacity: 0.8; margin-top: 5px;">Carregando sistema...</div>
-        <div id="log">Aguardando scripts...</div>
+        <div id="log">Iniciando...</div>
     </div>
 
     <div id="error-screen">
@@ -52,6 +52,7 @@
     <div id="root"></div>
 
     <script>
+        window.AppMounted = false;
         var logs = [];
         function addLog(msg) {
             console.log('[Init]', msg);
@@ -89,19 +90,16 @@
         };
     </script>
 
-    <!-- Essential Libraries (Synchronous) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" onload="addLog('React OK')" onerror="showError('Falha React')"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" onload="addLog('ReactDOM OK')" onerror="showError('Falha ReactDOM')"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" onload="addLog('XLSX OK')"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" onload="addLog('jsPDF OK')"></script>
     <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js" onload="addLog('docx OK')"></script>
 
-    <!-- Application Logic -->
-    <script src="brasao.js" onload="addLog('Brasao OK')" onerror="showError('Falha brasao.js')"></script>
-    <script src="app.js?v=4.9.1" onload="addLog('App Script OK')" onerror="showError('Falha app.js')"></script>
+    <script src="/brasao.js" onload="addLog('Brasao OK')" onerror="showError('Falha brasao.js')"></script>
+    <script src="/app.js?v=4.9.2" onload="addLog('App Script OK')" onerror="showError('Falha app.js')"></script>
 
     <script>
-        window.AppMounted = false;
         function mountApp() {
             if (window.AppMounted) return;
             addLog('Iniciando montagem...');
@@ -117,26 +115,25 @@
                             var loader = document.getElementById('initial-loader');
                             if (loader) loader.style.display = 'none';
                             document.body.style.overflow = 'auto';
-                        }, 1000);
+                        }, 1200);
                     } else {
-                        showError('Elemento #root não encontrado');
+                        showError('Elemento #root ausente');
                     }
                 } else {
                     var missing = [];
                     if (!window.React) missing.push('React');
                     if (!window.ReactDOM) missing.push('ReactDOM');
-                    if (!window.App) missing.push('App (lógica)');
+                    if (!window.App) missing.push('App');
                     showError('Faltando: ' + missing.join(', '));
                 }
             } catch (err) {
                 showError('Erro execução: ' + err.message);
             }
         }
-
         window.addEventListener('load', function() {
             setTimeout(mountApp, 200);
             if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('sw.js').then(function() { addLog('PWA OK'); }).catch(function(e) { console.warn('PWA Error:', e); });
+                navigator.serviceWorker.register('/sw.js').then(function() { addLog('PWA OK'); }).catch(function(e) { console.warn('PWA Fail:', e); });
             }
         });
     </script>

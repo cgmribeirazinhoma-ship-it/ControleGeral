@@ -8,8 +8,8 @@
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" },
-        { "key": "x-vercel-skip-toolbar", "value": "1" }
+        { "key": "x-vercel-skip-toolbar", "value": "1" },
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
       ]
     }
   ]
