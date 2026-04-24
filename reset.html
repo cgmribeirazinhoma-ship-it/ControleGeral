@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Reset ControleGeral</title>
+  <style>
+    body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #003d00; color: white; text-align: center; }
+    .btn { padding: 15px 30px; background: #EFD103; color: #003d00; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 18px; }
+  </style>
+</head>
+<body>
+  <h1>⚠️ Reset de Cache Detectado</h1>
+  <p>O navegador ficou preso em uma versão antiga do sistema.</p>
+  <button class="btn" onclick="resetApp()">LIMPAR CACHE E VOLTAR</button>
+
+  <script>
+    async function resetApp() {
+      try {
+        if ('serviceWorker' in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          for (let r of regs) await r.unregister();
+        }
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          for (let k of keys) await caches.delete(k);
+        }
+        alert('Cache limpo com sucesso! O sistema será recarregado.');
+        window.location.href = '/';
+      } catch (e) {
+        alert('Erro ao limpar: ' + e.message);
+      }
+    }
+  </script>
+</body>
+</html>
